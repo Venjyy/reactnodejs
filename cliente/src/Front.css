@@ -1,0 +1,924 @@
+/* Importación de fuentes inspiradas en la naturaleza sureña */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Montserrat:wght@600&display=swap');
+
+/* Reset básico para eliminar estilos predeterminados */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Variables CSS inspiradas en la naturaleza de Cañete y La Araucanía */
+:root {
+    --primario: #2c1810;
+    /* Marrón tierra profundo */
+    --secundario: #4a5d4f;
+    /* Verde musgo húmedo */
+    --terciario: #3d4a56;
+    /* Gris azulado de lluvia */
+    --acento: #b8591a;
+    /* Rojo volcánico suave */
+    --acento-hover: #9d4815;
+    /* Rojo volcánico más intenso */
+    --fondo-claro: #f0f0f0;
+    /* Gris cálido más oscuro para mejor contraste */
+    --fondo-claro-oscuro: #e8e6e4;
+    /* Variante más oscura para cards */
+    --fondo-textura: #e0ddd9;
+    /* Fondo con textura sutil más oscuro */
+    --texto-principal: #2a1f15;
+    /* Marrón profundo para mejor contraste */
+    --texto-secundario: #3d3529;
+    /* Marrón oscuro */
+    --texto-claro: #f7f7f7;
+    /* Blanco roto */
+    --borde-sutil: #c8c1b8;
+    /* Borde suave inspirado en corteza */
+    --sombra-suave: rgba(44, 24, 16, 0.12);
+    --sombra-media: rgba(44, 24, 16, 0.25);
+    --patron-mapuche: linear-gradient(45deg, rgba(44, 24, 16, 0.02) 25%, transparent 25%), linear-gradient(-45deg, rgba(44, 24, 16, 0.02) 25%, transparent 25%);
+}
+
+/* Estilos globales del cuerpo con inspiración natural */
+body {
+    font-family: 'Roboto', sans-serif;
+    background: rgba(240, 240, 240, 0.9);
+    background-image: var(--patron-mapuche);
+    background-size: 16px 16px;
+    color: var(--texto-principal);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Contenedor principal con máximo ancho responsive */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 16px;
+    width: 100%;
+}
+
+/* Clase para animaciones de fade-in al hacer scroll */
+.fade-in-section {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.fade-in-section.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Encabezado con degradado inspirado en el bosque templado */
+header {
+    background: linear-gradient(135deg, var(--primario) 0%, var(--terciario) 100%);
+    color: var(--texto-claro);
+    padding: 20px 0;
+    box-shadow: 0 4px 20px var(--sombra-suave);
+    position: relative;
+    z-index: 100;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Logo con tipografía distintiva */
+.logo {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    color: var(--texto-claro);
+}
+
+/* Navegación con microinteracciones sutiles */
+nav {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: var(--texto-claro);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 16px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Efecto de subrayado progresivo inspirado en raíces */
+nav a::after {
+    content: '';
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    width: 0;
+    height: 2px;
+    background: var(--acento);
+    transition: all 0.2s ease-in-out;
+    transform: translateX(-50%);
+}
+
+nav a:hover::after {
+    width: 70%;
+}
+
+nav a:hover {
+    background: rgba(184, 89, 26, 0.15);
+    transform: translateY(-1px);
+}
+
+/* Botón administrador con estilo distintivo */
+.btn-admin {
+    background: var(--acento) !important;
+    color: var(--texto-claro) !important;
+    font-weight: 600;
+    border-radius: 20px;
+    padding: 10px 18px !important;
+    box-shadow: 0 4px 12px rgba(184, 89, 26, 0.3);
+}
+
+.btn-admin:hover {
+    background: var(--acento-hover) !important;
+    box-shadow: 0 6px 16px rgba(184, 89, 26, 0.4);
+    transform: translateY(-2px) !important;
+}
+
+/* Sección hero con overlay inspirado en paisaje volcánico */
+.hero {
+    position: relative;
+    background: linear-gradient(135deg, var(--primario) 0%, var(--secundario) 50%, var(--terciario) 100%);
+    height: 600px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* background: url('./images/bg.jpg') no-repeat center center/cover; */
+    opacity: 0.25;
+    z-index: 1;
+    filter: sepia(0.3) contrast(1.1);
+}
+
+/* Overlay con tonos de bosque húmedo */
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg,
+            rgba(44, 24, 16, 0.7) 0%,
+            rgba(74, 93, 79, 0.6) 50%,
+            rgba(61, 74, 86, 0.5) 100%);
+    z-index: 2;
+}
+
+.hero-content {
+    position: relative;
+    color: var(--texto-claro);
+    z-index: 3;
+    max-width: 800px;
+    padding: 0 20px;
+}
+
+.hero h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: clamp(2.5rem, 5vw, 3.8rem);
+    margin-bottom: 24px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -1px;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.hero p {
+    font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+    margin-bottom: 40px;
+    color: rgba(247, 247, 247, 0.95);
+    font-weight: 400;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Botón principal inspirado en madera rústica */
+.btn {
+    background: linear-gradient(135deg, var(--acento) 0%, #d4671f 100%);
+    color: var(--texto-claro);
+    padding: 18px 40px;
+    border: none;
+    border-radius: 12px;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 500;
+    font-family: 'Montserrat', sans-serif;
+    display: inline-block;
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 8px 24px rgba(184, 89, 26, 0.3);
+    text-transform: none;
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.4s ease;
+}
+
+.btn:hover::before {
+    left: 100%;
+}
+
+.btn:hover {
+    background: linear-gradient(135deg, var(--acento-hover) 0%, #b8591a 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px rgba(184, 89, 26, 0.4);
+}
+
+/* Secciones con fondo texturizado sutil */
+.servicios,
+.reservas,
+.contacto,
+.datos-interes {
+    padding: 80px 0;
+    background: rgba(224, 221, 217, 0.8);
+    background-image: var(--patron-mapuche);
+    background-size: 16px 16px;
+}
+
+.servicios:nth-of-type(odd),
+.datos-interes {
+    background: rgba(240, 240, 240, 0.8);
+    background-image: var(--patron-mapuche);
+    background-size: 16px 16px;
+    text-align: center;
+    padding: 80px 0;
+    position: relative;
+}
+
+.datos-interes::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, rgba(74, 93, 79, 0.03) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(74, 93, 79, 0.03) 25%, transparent 25%);
+    background-size: 20px 20px;
+    opacity: 0.7;
+}
+
+.datos-interes h2 {
+    position: relative;
+    z-index: 2;
+    color: var(--primario);
+    margin-bottom: 3rem;
+}
+
+.datos-interes ul {
+    list-style: none;
+    padding: 0;
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    box-shadow: 0 15px 40px rgba(44, 24, 16, 0.1);
+    border: 1px solid rgba(200, 193, 184, 0.3);
+}
+
+.datos-interes ul li {
+    margin-bottom: 1.5rem;
+    font-size: 1.2rem;
+    line-height: 1.8;
+    position: relative;
+    padding: 1rem 1.5rem;
+    background: rgba(74, 93, 79, 0.05);
+    border-radius: 12px;
+    border-left: 4px solid var(--acento);
+    transition: all 0.3s ease-in-out;
+    color: var(--texto-principal);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    text-align: left;
+    max-width: 100%;
+    box-shadow: 0 2px 8px rgba(44, 24, 16, 0.08);
+}
+
+.datos-interes ul li::before {
+    content: '🌿';
+    position: relative;
+    left: 0;
+    top: 0;
+    font-size: 1.4rem;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.datos-interes ul li:nth-child(2)::before {
+    content: '🏡';
+}
+
+.datos-interes ul li:nth-child(3)::before {
+    content: '🪵';
+}
+
+.datos-interes ul li:nth-child(4)::before {
+    content: '👨‍🍳';
+}
+
+.datos-interes ul li:nth-child(5)::before {
+    content: '🎮';
+}
+
+.datos-interes ul li:hover {
+    background: rgba(74, 93, 79, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(44, 24, 16, 0.15);
+    border-left-color: var(--acento-hover);
+}
+
+.datos-interes ul li:last-child {
+    margin-bottom: 0;
+}
+
+.datos-interes p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--texto-secundario);
+    max-width: 800px;
+    text-align: center;
+    margin: 2rem auto 0;
+    position: relative;
+    z-index: 2;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 1.5rem;
+    border-radius: 12px;
+}
+
+/* Responsive para datos de interés */
+@media (max-width: 768px) {
+    .datos-interes ul {
+        padding: 2rem 1rem;
+        margin: 0 1rem;
+    }
+
+    .datos-interes ul li {
+        font-size: 1.1rem;
+        padding: 0.8rem 1rem;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .datos-interes ul li::before {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .datos-interes ul {
+        padding: 1.5rem 0.8rem;
+        margin: 0 0.5rem;
+    }
+
+    .datos-interes ul li {
+        font-size: 1rem;
+        padding: 0.8rem;
+    }
+}
+
+/* Títulos de sección con inspiración mapuche */
+.servicios h2,
+.reservas h2,
+.contacto h2,
+.datos-interes h2 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    margin-bottom: 50px;
+    color: var(--primario);
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    position: relative;
+    text-align: center;
+}
+
+.servicios h2::after,
+.reservas h2::after,
+.contacto h2::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, var(--acento), var(--acento-hover));
+    border-radius: 2px;
+}
+
+.datos-interes h2::after {
+    left: 0;
+    transform: none;
+    width: 60px;
+}
+
+/* Grid de servicios con estilo natural */
+.servicios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* Tarjetas de servicio con textura de madera sutil y transiciones suaves */
+.servicio-card {
+    background: var(--fondo-claro-oscuro);
+    background-image: linear-gradient(145deg, transparent 0%, rgba(44, 24, 16, 0.03) 100%);
+    padding: 40px 30px;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px var(--sombra-suave);
+    border: 1px solid var(--borde-sutil);
+    transition: box-shadow 0.3s ease, transform 0.3s ease, background-image 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.servicio-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--acento), var(--secundario));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.servicio-card:hover::before {
+    transform: scaleX(1);
+}
+
+.servicio-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px var(--sombra-media);
+    background-image: linear-gradient(145deg, rgba(74, 93, 79, 0.04) 0%, rgba(44, 24, 16, 0.06) 100%);
+}
+
+.servicio-card h3 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+    color: var(--primario);
+    font-weight: 600;
+}
+
+.servicio-card p {
+    color: var(--texto-secundario);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* Formularios con estilo inspirado en elementos naturales */
+.form {
+    max-width: 700px;
+    margin: 0 auto;
+    background: var(--fondo-claro-oscuro);
+    background-image: linear-gradient(145deg, rgba(74, 93, 79, 0.03) 0%, rgba(44, 24, 16, 0.03) 100%);
+    padding: 50px;
+    border-radius: 20px;
+    box-shadow: 0 16px 48px var(--sombra-suave);
+    border: 1px solid var(--borde-sutil);
+}
+
+.form-group {
+    margin-bottom: 24px;
+}
+
+.form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--texto-principal);
+    font-size: 1rem;
+}
+
+/* Inputs con textura sutil de madera desgastada */
+.form input,
+.form select,
+.form textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid var(--borde-sutil);
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: inherit;
+    transition: border-color 0.2s ease;
+    background: rgba(232, 230, 228, 0.9);
+    background-image: linear-gradient(145deg, transparent 0%, rgba(44, 24, 16, 0.02) 100%);
+    color: var(--texto-principal);
+}
+
+.form input:focus,
+.form select:focus,
+.form textarea:focus {
+    outline: none;
+    border-color: var(--acento);
+    box-shadow: 0 0 0 3px rgba(184, 89, 26, 0.1);
+    background: var(--fondo-claro-oscuro);
+}
+
+.form textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.form button {
+    margin-top: 32px;
+    width: 100%;
+    font-size: 18px;
+    padding: 16px;
+}
+
+/* Galería con estilo natural */
+.galeria-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px;
+    margin: 60px auto 0;
+    max-width: 1100px;
+    padding: 0 20px;
+}
+
+.galeria-grid img {
+    width: 100%;
+    height: 320px;
+    object-fit: cover;
+    border-radius: 20px;
+    border: 1px solid var(--borde-sutil);
+    box-shadow: 0 12px 35px rgba(44, 24, 16, 0.15);
+    transition: all 0.4s ease-in-out;
+    cursor: pointer;
+    filter: contrast(1.05) saturate(0.95);
+    position: relative;
+    overflow: hidden;
+}
+
+.galeria-grid img::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(45deg, transparent 30%, rgba(184, 89, 26, 0.05) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.galeria-grid img:hover::before {
+    opacity: 1;
+}
+
+.galeria-grid img:hover {
+    transform: translateY(-8px) scale(1.03);
+    box-shadow: 0 20px 50px rgba(44, 24, 16, 0.25);
+    filter: contrast(1.1) saturate(1.05);
+    border-color: var(--acento);
+}
+
+@media (max-width: 1024px) {
+    .galeria-grid {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 35px;
+        margin: 50px auto 0;
+        padding: 0 30px;
+    }
+
+    .galeria-grid img {
+        height: 300px;
+        border-radius: 18px;
+    }
+}
+
+@media (max-width: 768px) {
+    .galeria-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        margin: 40px auto 0;
+        padding: 0 25px;
+    }
+
+    .galeria-grid img {
+        height: 280px;
+        border-radius: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .galeria-grid {
+        gap: 25px;
+        margin: 30px auto 0;
+        padding: 0 20px;
+    }
+
+    .galeria-grid img {
+        height: 240px;
+        border-radius: 14px;
+    }
+}
+
+/* Lista de datos de interés con iconografía natural */
+.datos-interes ul {
+    list-style: none;
+    padding: 0;
+    color: var(--texto-principal);
+    max-width: 800px;
+}
+
+.datos-interes ul li {
+    margin-bottom: 16px;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    position: relative;
+    padding-left: 32px;
+    transition: all 0.3s ease-in-out;
+}
+
+.datos-interes ul li::before {
+    content: '🌿';
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-size: 1.2rem;
+}
+
+.datos-interes ul li:hover {
+    color: var(--primario);
+    transform: translateX(4px);
+}
+
+.datos-interes p {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: var(--texto-secundario);
+    max-width: 800px;
+    text-align: justify;
+    margin-top: 24px;
+}
+
+/* Sección de contacto con enlaces destacados */
+.contacto p {
+    font-size: 1.2rem;
+    color: var(--texto-secundario);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.contacto a {
+    color: var(--acento);
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease-in-out;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.contacto a:hover {
+    color: var(--acento-hover);
+    background: rgba(184, 89, 26, 0.08);
+    transform: translateY(-1px);
+}
+
+/* Mensajes de estado del formulario */
+.message {
+    margin-top: 24px;
+    padding: 16px 20px;
+    border-radius: 8px;
+    font-weight: 500;
+    text-align: center;
+}
+
+.success-message {
+    background: rgba(74, 93, 79, 0.15);
+    color: var(--secundario);
+    border: 1px solid rgba(74, 93, 79, 0.3);
+}
+
+.error-message {
+    background: rgba(184, 89, 26, 0.15);
+    color: var(--acento-hover);
+    border: 1px solid rgba(184, 89, 26, 0.3);
+}
+
+/* Pie de página con estilo oscuro natural */
+footer {
+    background: linear-gradient(135deg, var(--primario) 0%, var(--terciario) 100%);
+    color: var(--texto-claro);
+    text-align: center;
+    padding: 32px 0;
+    margin-top: 0;
+    box-shadow: 0 -4px 20px var(--sombra-suave);
+}
+
+footer p {
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+/* Accesibilidad - outline para elementos focusables */
+a:focus,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px dashed var(--acento);
+    outline-offset: 2px;
+}
+
+/* Media Queries para diseño responsive */
+@media (max-width: 1440px) {
+    .container {
+        padding: 0 20px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .container {
+        padding: 0 12px;
+    }
+
+    .header-content {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    nav {
+        justify-content: center;
+    }
+
+    .hero {
+        height: 500px;
+    }
+
+    .servicios,
+    .reservas,
+    .contacto,
+    .datos-interes {
+        padding: 60px 0;
+    }
+}
+
+@media (max-width: 768px) {
+    .form {
+        padding: 30px 20px;
+        margin: 0 12px;
+    }
+
+    .servicios-grid {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .galeria-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    nav {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    nav a {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+
+    .form input,
+    .form select,
+    .form textarea {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        width: 95%;
+        padding: 0 8px;
+    }
+
+    .hero h1 {
+        font-size: 2.2rem;
+    }
+
+    .hero p {
+        font-size: 1.1rem;
+    }
+
+    .btn {
+        padding: 14px 28px;
+        font-size: 16px;
+    }
+
+    .form {
+        margin: 0 8px;
+        padding: 20px 16px;
+    }
+
+    .servicios h2,
+    .reservas h2,
+    .contacto h2 {
+        font-size: 1.8rem;
+    }
+
+    nav {
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+}
+
+/* Animaciones suaves para carga progresiva */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.servicio-card,
+.galeria-grid img,
+.datos-interes ul li {
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+/* Scroll suave para navegación */
+html {
+    scroll-behavior: smooth;
+}
+
+/* Mejoras adicionales de microinteracciones */
+.btn,
+.servicio-card,
+.galeria-grid img,
+nav a,
+.contacto a {
+    will-change: transform;
+}
+
+/* Patrón sutil mapuche para secciones especiales */
+.hero::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image:
+        repeating-conic-gradient(from 0deg at 50% 50%,
+            transparent 0deg,
+            rgba(247, 247, 247, 0.02) 45deg,
+            transparent 90deg);
+    z-index: 2;
+    pointer-events: none;
+}
