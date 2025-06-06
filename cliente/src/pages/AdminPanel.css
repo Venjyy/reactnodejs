@@ -1,0 +1,30 @@
+.admin-layout {
+    display: flex;
+    min-height: 100vh;
+    background: #f5f7fa;
+}
+
+.admin-main-content {
+    flex: 1;
+    margin-left: 280px;
+    /* Ancho fijo de la sidebar */
+    padding: 30px;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Responsive para móviles */
+@media (max-width: 768px) {
+    .admin-main-content {
+        margin-left: 0;
+        padding: 20px 15px;
+    }
+}
+
+/* Asegurar que el contenido no se superponga */
+@media (min-width: 769px) {
+    .admin-main-content {
+        margin-left: 280px;
+        /* Siempre mantener el margen en desktop */
+    }
+}

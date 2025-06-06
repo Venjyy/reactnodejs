@@ -31,7 +31,7 @@ function AdminLogin() {
 
                 // Redirigir al dashboard administrativo después de 2 segundos
                 setTimeout(() => {
-                    window.location.href = '/admin-dashboard';
+                    window.location.href = '/admin-dashboard'; // Cambia esto al path correcto de tu dashboard
                 }, 2000);
             })
             .catch((error) => {

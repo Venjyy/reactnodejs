@@ -6,15 +6,23 @@
     position: fixed;
     left: 0;
     top: 0;
-    transition: width 0.3s ease;
     display: flex;
     flex-direction: column;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
     z-index: 1000;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    /* OCULTAR SCROLLBAR */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
 }
 
-.sidebar.collapsed {
-    width: 70px;
+/* OCULTAR SCROLLBAR EN WEBKIT (Chrome, Safari, Edge) */
+.sidebar::-webkit-scrollbar {
+    display: none;
 }
 
 .sidebar-header {
@@ -22,7 +30,7 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
 }
 
 .logo-section {
@@ -41,24 +49,21 @@
     font-weight: 600;
 }
 
-.collapse-btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: none;
-    color: white;
-    padding: 8px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-}
-
-.collapse-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-}
-
 .sidebar-nav {
     flex: 1;
     padding: 20px 0;
     overflow-y: auto;
+
+    /* OCULTAR SCROLLBAR TAMBIÉN EN LA NAVEGACIÓN */
+    scrollbar-width: none;
+    /* Firefox */
+    -ms-overflow-style: none;
+    /* Internet Explorer 10+ */
+}
+
+/* OCULTAR SCROLLBAR EN LA NAVEGACIÓN PARA WEBKIT */
+.sidebar-nav::-webkit-scrollbar {
+    display: none;
 }
 
 .nav-menu {
@@ -197,13 +202,14 @@
     background: rgba(255, 0, 0, 0.3);
 }
 
-/* Responsive */
+/* Responsive - En móviles ocultamos la sidebar */
 @media (max-width: 768px) {
     .sidebar {
-        width: 70px;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
     }
 
-    .sidebar.collapsed {
-        width: 70px;
+    .sidebar.mobile-open {
+        transform: translateX(0);
     }
 }

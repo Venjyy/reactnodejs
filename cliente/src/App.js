@@ -1,19 +1,21 @@
-import './App.css';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Front from './Front';
-import AdminRegister from './Authorize/AdminRegister';
-import AdminLogin from './Authorize/AdminLogin';
-import AdminDashboard from './AdminDashboard';
+import Front from './pages/Front';
+import AdminLogin from './components/Authorize/AdminLogin';
+import AdminPanel from './pages/AdminPanel';
+import './styles/App.css';
 
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Front />} />
-        <Route path="/admin-register" element={<AdminRegister />} />
-        <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
-      </Routes>
+      <div className="App">
+        <Routes>
+          <Route path="/" element={<Front />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/admin-dashboard" element={<AdminPanel />} />
+          <Route path="/admin-dashboard/*" element={<AdminPanel />} />
+        </Routes>
+      </div>
     </Router>
   );
 }

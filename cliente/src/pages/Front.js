@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Axios from 'axios';
-import './Front.css'; // Asegúrate de tener este archivo CSS
+import './Front'; // Asegúrate de tener este archivo CSS
 
 function Front() {
     // Estados para la sección de reserva
