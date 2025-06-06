@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Axios from 'axios';
-import './AdminRegister.css';
+import './AdminAuth.css';
 
 function AdminRegister() {
     const [usuario, setUsuario] = useState('');
@@ -46,8 +46,8 @@ function AdminRegister() {
     };
 
     return (
-        <div className="admin-register-container">
-            <div className="admin-register-form">
+        <div className="admin-auth-container">
+            <div className="admin-auth-form">
                 <h1>Registro de Administrador</h1>
                 <p>Crea una cuenta de administrador para gestionar el centro de eventos</p>
 
@@ -76,7 +76,7 @@ function AdminRegister() {
                         />
                     </div>
 
-                    <button type="submit" className="btn-register">
+                    <button type="submit" className="btn-auth">
                         Crear Administrador
                     </button>
                 </form>

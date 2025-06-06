@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import Axios from 'axios';
-import './AdminLogin.css';
+import './AdminAuth.css';
 
 function AdminLogin() {
     const [usuario, setUsuario] = useState('');
@@ -24,15 +24,14 @@ function AdminLogin() {
                 setStatus('success');
                 setIsLoading(false);
 
-                // Aquí puedes guardar el token o datos del usuario
+                // Guardar datos del usuario autenticado
                 localStorage.setItem('adminLoggedIn', 'true');
                 localStorage.setItem('adminUser', res.data.usuario);
                 localStorage.setItem('adminId', res.data.id);
 
-                // Redirigir al panel de administración después de 2 segundos
+                // Redirigir al dashboard administrativo después de 2 segundos
                 setTimeout(() => {
-                    // Por ahora redirigimos al inicio, después puedes crear un Dashboard
-                    window.location.href = '/';
+                    window.location.href = '/admin-dashboard';
                 }, 2000);
             })
             .catch((error) => {
@@ -60,6 +59,7 @@ function AdminLogin() {
             });
     };
 
+    // ...existing code...
     const handleSubmit = (e) => {
         e.preventDefault();
 
@@ -90,8 +90,8 @@ function AdminLogin() {
     };
 
     return (
-        <div className="admin-login-container">
-            <div className="admin-login-form">
+        <div className="admin-auth-container">
+            <div className="admin-auth-form">
                 <div className="login-header">
                     <h1>Acceso Administrativo</h1>
                     <p>Ingrese sus credenciales para acceder al panel de control</p>
@@ -140,7 +140,7 @@ function AdminLogin() {
 
                     <button
                         type="submit"
-                        className={`btn-login ${isLoading ? 'loading' : ''}`}
+                        className={`btn-auth ${isLoading ? 'loading' : ''}`}
                         disabled={isLoading}
                     >
                         {isLoading ? (

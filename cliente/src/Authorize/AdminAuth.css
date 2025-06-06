@@ -1,4 +1,5 @@
-.admin-register-container {
+/* Estilos compartidos para AdminLogin y AdminRegister */
+.admin-auth-container {
     min-height: 100vh;
     background: linear-gradient(135deg, #2c1810 0%, #4a5d4f 50%, #3d4a56 100%);
     display: flex;
@@ -8,7 +9,7 @@
     position: relative;
 }
 
-.admin-register-container::before {
+.admin-auth-container::before {
     content: '';
     position: absolute;
     top: 0;
@@ -21,7 +22,7 @@
     pointer-events: none;
 }
 
-.admin-register-form {
+.admin-auth-form {
     background: rgba(240, 240, 240, 0.97);
     background-image: linear-gradient(145deg, rgba(74, 93, 79, 0.03) 0%, rgba(44, 24, 16, 0.03) 100%);
     padding: 50px 40px;
@@ -35,7 +36,7 @@
     z-index: 1;
 }
 
-.admin-register-form h1 {
+.admin-auth-form h1 {
     font-family: 'Montserrat', sans-serif;
     color: #2c1810;
     margin-bottom: 16px;
@@ -44,7 +45,7 @@
     letter-spacing: -0.5px;
 }
 
-.admin-register-form p {
+.admin-auth-form p {
     color: #3d3529;
     margin-bottom: 32px;
     font-size: 1rem;
@@ -85,7 +86,13 @@
     background: #e8e6e4;
 }
 
-.btn-register {
+.form-group input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Botones compartidos */
+.btn-auth {
     background: linear-gradient(135deg, #b8591a 0%, #d4671f 100%);
     color: #f7f7f7;
     padding: 16px 32px;
@@ -102,9 +109,13 @@
     position: relative;
     overflow: hidden;
     letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-.btn-register::before {
+.btn-auth::before {
     content: '';
     position: absolute;
     top: 0;
@@ -115,22 +126,51 @@
     transition: left 0.4s ease;
 }
 
-.btn-register:hover::before {
+.btn-auth:hover::before {
     left: 100%;
 }
 
-.btn-register:hover {
+.btn-auth:hover:not(:disabled) {
     background: linear-gradient(135deg, #9d4815 0%, #b8591a 100%);
     transform: translateY(-2px);
     box-shadow: 0 12px 32px rgba(184, 89, 26, 0.4);
 }
 
+.btn-auth:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-auth.loading {
+    opacity: 0.8;
+}
+
+.spinner {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Mensajes */
 .message {
     margin-top: 24px;
     padding: 16px 20px;
     border-radius: 8px;
     font-weight: 500;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .success-message {
@@ -145,7 +185,15 @@
     border: 1px solid rgba(184, 89, 26, 0.3);
 }
 
-.links-container {
+.loading-message {
+    background: rgba(61, 74, 86, 0.15);
+    color: #3d4a56;
+    border: 1px solid rgba(61, 74, 86, 0.3);
+}
+
+/* Enlaces y navegación */
+.links-container,
+.navigation-links {
     margin-top: 32px;
     padding-top: 24px;
     border-top: 1px solid rgba(200, 193, 184, 0.3);
@@ -155,42 +203,67 @@
     gap: 16px;
 }
 
+.navigation-links {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    flex-direction: column;
+    gap: 12px;
+}
+
 .back-link a,
-.login-link a {
+.login-link a,
+.link-home,
+.link-register {
     color: #b8591a;
     text-decoration: none;
     font-weight: 500;
     transition: all 0.3s ease-in-out;
     padding: 8px 16px;
     border-radius: 6px;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     font-size: 0.9rem;
 }
 
 .back-link a:hover,
-.login-link a:hover {
+.login-link a:hover,
+.link-home:hover,
+.link-register:hover {
     color: #9d4815;
     background: rgba(184, 89, 26, 0.08);
     transform: translateY(-1px);
 }
 
+.help-text {
+    margin-top: 16px;
+    text-align: center;
+}
+
+.help-text small {
+    color: #666;
+    font-size: 0.8rem;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
-    .admin-register-form {
+    .admin-auth-form {
         padding: 30px 20px;
         margin: 0 10px;
     }
 
-    .admin-register-form h1 {
+    .admin-auth-form h1 {
         font-size: 1.7rem;
     }
 
-    .btn-register {
+    .btn-auth {
         padding: 14px 24px;
         font-size: 16px;
     }
 
-    .links-container {
+    .links-container,
+    .navigation-links {
         flex-direction: column;
         text-align: center;
     }
