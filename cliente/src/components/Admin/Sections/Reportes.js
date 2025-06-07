@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './Sections.css';
 
 function Reportes() {
@@ -14,57 +14,102 @@ function Reportes() {
         hasta: new Date().toISOString().split('T')[0]
     });
     const [tipoReporte, setTipoReporte] = useState('resumen');
+    const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        loadReporteData();
-    }, [filtroFecha]);
-
-    const loadReporteData = async () => {
+    // PRIMER: Declarar loadReporteDataIndividual con useCallback
+    const loadReporteDataIndividual = useCallback(async () => {
         try {
-            // Simulación de datos de reportes
-            const mockData = {
-                ventasPorMes: [
-                    { mes: 'Enero 2025', ingresos: 4200000, reservas: 18 },
-                    { mes: 'Febrero 2025', ingresos: 3800000, reservas: 15 },
-                    { mes: 'Marzo 2025', ingresos: 5100000, reservas: 22 },
-                    { mes: 'Abril 2025', ingresos: 4600000, reservas: 19 },
-                    { mes: 'Mayo 2025', ingresos: 5500000, reservas: 25 },
-                    { mes: 'Junio 2025', ingresos: 2500000, reservas: 12 }
-                ],
-                espaciosMasReservados: [
-                    { nombre: 'Salón Principal', reservas: 45, ingresos: 17100000, ocupacion: 85 },
-                    { nombre: 'Salón VIP', reservas: 28, ingresos: 15400000, ocupacion: 70 },
-                    { nombre: 'Terraza Jardín', reservas: 18, ingresos: 5040000, ocupacion: 45 },
-                    { nombre: 'Sala de Reuniones', reservas: 20, ingresos: 3000000, ocupacion: 60 }
-                ],
-                serviciosMasContratados: [
-                    { nombre: 'Catering Premium', contrataciones: 52, ingresos: 23400000 },
-                    { nombre: 'Decoración Temática', contrataciones: 38, ingresos: 6840000 },
-                    { nombre: 'Sistema de Sonido', contrataciones: 35, ingresos: 8750000 },
-                    { nombre: 'Fotografía Profesional', contrataciones: 29, ingresos: 9280000 }
-                ],
-                clientesTopPorIngresos: [
-                    { nombre: 'Eventos Corporativos SpA', reservas: 8, ingresos: 9200000, ultimaReserva: '2025-06-01' },
-                    { nombre: 'María González', reservas: 12, ingresos: 7800000, ultimaReserva: '2025-06-20' },
-                    { nombre: 'Fundación Los Niños', reservas: 6, ingresos: 4200000, ultimaReserva: '2025-05-15' },
-                    { nombre: 'Carlos Pérez', reservas: 5, ingresos: 3900000, ultimaReserva: '2025-07-05' }
-                ],
+            const params = `?desde=${filtroFecha.desde}&hasta=${filtroFecha.hasta}`;
+
+            const [
+                estadisticasRes,
+                ventasRes,
+                espaciosRes,
+                serviciosRes,
+                clientesRes
+            ] = await Promise.all([
+                fetch(`http://localhost:3001/api/reportes/estadisticas-generales${params}`),
+                fetch(`http://localhost:3001/api/reportes/ventas-por-mes${params}`),
+                fetch(`http://localhost:3001/api/reportes/espacios-mas-reservados${params}`),
+                fetch(`http://localhost:3001/api/reportes/servicios-mas-contratados${params}`),
+                fetch(`http://localhost:3001/api/reportes/clientes-top-ingresos${params}`)
+            ]);
+
+            const [
+                estadisticasGenerales,
+                ventasPorMes,
+                espaciosMasReservados,
+                serviciosMasContratados,
+                clientesTopPorIngresos
+            ] = await Promise.all([
+                estadisticasRes.ok ? estadisticasRes.json() : {},
+                ventasRes.ok ? ventasRes.json() : [],
+                espaciosRes.ok ? espaciosRes.json() : [],
+                serviciosRes.ok ? serviciosRes.json() : [],
+                clientesRes.ok ? clientesRes.json() : []
+            ]);
+
+            setReporteData({
+                estadisticasGenerales,
+                ventasPorMes,
+                espaciosMasReservados,
+                serviciosMasContratados,
+                clientesTopPorIngresos
+            });
+
+            console.log('Datos de reportes cargados individualmente desde BD');
+        } catch (error) {
+            console.error('Error al cargar datos individuales:', error);
+            // Mantener datos vacíos en caso de error total
+            setReporteData({
+                ventasPorMes: [],
+                espaciosMasReservados: [],
+                serviciosMasContratados: [],
+                clientesTopPorIngresos: [],
                 estadisticasGenerales: {
-                    totalIngresos: 25940000,
-                    totalReservas: 111,
-                    promedioReservaMes: 18.5,
-                    promedioIngresoReserva: 233693,
-                    tasaOcupacion: 65,
-                    crecimientoMensual: 12.5,
-                    clientesActivos: 89,
-                    serviciosContratados: 154
+                    totalIngresos: 0,
+                    totalReservas: 0,
+                    promedioReservaMes: 0,
+                    promedioIngresoReserva: 0,
+                    tasaOcupacion: 0,
+                    crecimientoMensual: 0,
+                    clientesActivos: 0,
+                    serviciosContratados: 0
                 }
-            };
-            setReporteData(mockData);
+            });
+        }
+    }, [filtroFecha]); // Agregar filtroFecha como dependencia
+
+    // SEGUNDO: Declarar loadReporteData con useCallback DESPUÉS de loadReporteDataIndividual
+    const loadReporteData = useCallback(async () => {
+        setLoading(true);
+        try {
+            console.log('Cargando datos de reportes con filtros:', filtroFecha);
+
+            const response = await fetch(`http://localhost:3001/api/reportes/datos-completos?desde=${filtroFecha.desde}&hasta=${filtroFecha.hasta}`);
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Datos de reportes cargados desde BD:', data);
+                setReporteData(data);
+            } else {
+                console.error('Error al cargar datos de reportes:', response.statusText);
+                // Fallback a datos individuales si el endpoint consolidado falla
+                await loadReporteDataIndividual();
+            }
         } catch (error) {
             console.error('Error cargando datos de reportes:', error);
+            // Fallback a datos individuales
+            await loadReporteDataIndividual();
+        } finally {
+            setLoading(false);
         }
-    };
+    }, [filtroFecha, loadReporteDataIndividual]); // Agregar ambas dependencias
+
+    // TERCERO: useEffect después de todas las declaraciones
+    useEffect(() => {
+        loadReporteData();
+    }, [loadReporteData]);
 
     const handleFiltroChange = (e) => {
         setFiltroFecha({
@@ -85,28 +130,28 @@ function Reportes() {
                 <div className="stat-item">
                     <span className="stat-icon">💰</span>
                     <div>
-                        <h3>${reporteData.estadisticasGenerales.totalIngresos?.toLocaleString()}</h3>
+                        <h3>${(reporteData.estadisticasGenerales.totalIngresos || 0).toLocaleString()}</h3>
                         <p>Ingresos Totales</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📅</span>
                     <div>
-                        <h3>{reporteData.estadisticasGenerales.totalReservas}</h3>
+                        <h3>{reporteData.estadisticasGenerales.totalReservas || 0}</h3>
                         <p>Total Reservas</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📊</span>
                     <div>
-                        <h3>{reporteData.estadisticasGenerales.tasaOcupacion}%</h3>
+                        <h3>{reporteData.estadisticasGenerales.tasaOcupacion || 0}%</h3>
                         <p>Tasa de Ocupación</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📈</span>
                     <div>
-                        <h3>+{reporteData.estadisticasGenerales.crecimientoMensual}%</h3>
+                        <h3>{reporteData.estadisticasGenerales.crecimientoMensual >= 0 ? '+' : ''}{reporteData.estadisticasGenerales.crecimientoMensual || 0}%</h3>
                         <p>Crecimiento Mensual</p>
                     </div>
                 </div>
@@ -116,48 +161,56 @@ function Reportes() {
                 <div className="reporte-card">
                     <h3>📈 Ventas por Mes</h3>
                     <div className="chart-placeholder">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Mes</th>
-                                    <th>Reservas</th>
-                                    <th>Ingresos</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {reporteData.ventasPorMes.map((mes, index) => (
-                                    <tr key={index}>
-                                        <td>{mes.mes}</td>
-                                        <td>{mes.reservas}</td>
-                                        <td>${mes.ingresos.toLocaleString()}</td>
+                        {reporteData.ventasPorMes.length > 0 ? (
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th>Reservas</th>
+                                        <th>Ingresos</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {reporteData.ventasPorMes.map((mes, index) => (
+                                        <tr key={index}>
+                                            <td>{mes.mes}</td>
+                                            <td>{mes.reservas}</td>
+                                            <td>${mes.ingresos.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : (
+                            <p>No hay datos de ventas para el período seleccionado</p>
+                        )}
                     </div>
                 </div>
 
                 <div className="reporte-card">
                     <h3>🏢 Espacios Más Reservados</h3>
                     <div className="ranking-list">
-                        {reporteData.espaciosMasReservados.map((espacio, index) => (
-                            <div key={index} className="ranking-item">
-                                <div className="ranking-position">#{index + 1}</div>
-                                <div className="ranking-info">
-                                    <strong>{espacio.nombre}</strong>
-                                    <small>{espacio.reservas} reservas - ${espacio.ingresos.toLocaleString()}</small>
-                                </div>
-                                <div className="ranking-percentage">
-                                    <div className="progress-bar">
-                                        <div
-                                            className="progress-fill"
-                                            style={{ width: `${espacio.ocupacion}%` }}
-                                        ></div>
+                        {reporteData.espaciosMasReservados.length > 0 ? (
+                            reporteData.espaciosMasReservados.map((espacio, index) => (
+                                <div key={index} className="ranking-item">
+                                    <div className="ranking-position">#{index + 1}</div>
+                                    <div className="ranking-info">
+                                        <strong>{espacio.nombre}</strong>
+                                        <small>{espacio.reservas} reservas - ${espacio.ingresos.toLocaleString()}</small>
                                     </div>
-                                    <span>{espacio.ocupacion}%</span>
+                                    <div className="ranking-percentage">
+                                        <div className="progress-bar">
+                                            <div
+                                                className="progress-fill"
+                                                style={{ width: `${Math.min(espacio.ocupacion, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <span>{espacio.ocupacion.toFixed(1)}%</span>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            ))
+                        ) : (
+                            <p>No hay datos de espacios para el período seleccionado</p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -166,36 +219,44 @@ function Reportes() {
                 <div className="reporte-card">
                     <h3>🎯 Servicios Más Contratados</h3>
                     <div className="ranking-list">
-                        {reporteData.serviciosMasContratados.map((servicio, index) => (
-                            <div key={index} className="ranking-item">
-                                <div className="ranking-position">#{index + 1}</div>
-                                <div className="ranking-info">
-                                    <strong>{servicio.nombre}</strong>
-                                    <small>{servicio.contrataciones} contrataciones</small>
+                        {reporteData.serviciosMasContratados.length > 0 ? (
+                            reporteData.serviciosMasContratados.map((servicio, index) => (
+                                <div key={index} className="ranking-item">
+                                    <div className="ranking-position">#{index + 1}</div>
+                                    <div className="ranking-info">
+                                        <strong>{servicio.nombre}</strong>
+                                        <small>{servicio.contrataciones} contrataciones</small>
+                                    </div>
+                                    <div className="ranking-revenue">
+                                        ${servicio.ingresos.toLocaleString()}
+                                    </div>
                                 </div>
-                                <div className="ranking-revenue">
-                                    ${servicio.ingresos.toLocaleString()}
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        ) : (
+                            <p>No hay datos de servicios para el período seleccionado</p>
+                        )}
                     </div>
                 </div>
 
                 <div className="reporte-card">
                     <h3>👑 Clientes Top por Ingresos</h3>
                     <div className="ranking-list">
-                        {reporteData.clientesTopPorIngresos.map((cliente, index) => (
-                            <div key={index} className="ranking-item">
-                                <div className="ranking-position">#{index + 1}</div>
-                                <div className="ranking-info">
-                                    <strong>{cliente.nombre}</strong>
-                                    <small>{cliente.reservas} reservas - Última: {new Date(cliente.ultimaReserva).toLocaleDateString()}</small>
+                        {reporteData.clientesTopPorIngresos.length > 0 ? (
+                            reporteData.clientesTopPorIngresos.map((cliente, index) => (
+                                <div key={index} className="ranking-item">
+                                    <div className="ranking-position">#{index + 1}</div>
+                                    <div className="ranking-info">
+                                        <strong>{cliente.nombre}</strong>
+                                        <small>{cliente.reservas} reservas - Última: {cliente.ultimaReserva ? new Date(cliente.ultimaReserva).toLocaleDateString() : 'N/A'}</small>
+                                    </div>
+                                    <div className="ranking-revenue">
+                                        ${cliente.ingresos.toLocaleString()}
+                                    </div>
                                 </div>
-                                <div className="ranking-revenue">
-                                    ${cliente.ingresos.toLocaleString()}
-                                </div>
-                            </div>
-                        ))}
+                            ))
+                        ) : (
+                            <p>No hay datos de clientes para el período seleccionado</p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -207,35 +268,41 @@ function Reportes() {
             <h3>📊 Reporte Detallado de Ventas</h3>
             <div className="section-content">
                 <div className="data-table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Período</th>
-                                <th>Reservas</th>
-                                <th>Ingresos</th>
-                                <th>Promedio por Reserva</th>
-                                <th>Crecimiento</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reporteData.ventasPorMes.map((mes, index) => {
-                                const crecimiento = index > 0
-                                    ? ((mes.ingresos - reporteData.ventasPorMes[index - 1].ingresos) / reporteData.ventasPorMes[index - 1].ingresos * 100).toFixed(1)
-                                    : 0;
-                                return (
-                                    <tr key={index}>
-                                        <td>{mes.mes}</td>
-                                        <td>{mes.reservas}</td>
-                                        <td>${mes.ingresos.toLocaleString()}</td>
-                                        <td>${(mes.ingresos / mes.reservas).toLocaleString()}</td>
-                                        <td className={crecimiento >= 0 ? 'text-success' : 'text-danger'}>
-                                            {crecimiento >= 0 ? '+' : ''}{crecimiento}%
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    {reporteData.ventasPorMes.length > 0 ? (
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Período</th>
+                                    <th>Reservas</th>
+                                    <th>Ingresos</th>
+                                    <th>Promedio por Reserva</th>
+                                    <th>Crecimiento</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reporteData.ventasPorMes.map((mes, index) => {
+                                    const crecimiento = index > 0 && reporteData.ventasPorMes[index - 1].ingresos > 0
+                                        ? ((mes.ingresos - reporteData.ventasPorMes[index - 1].ingresos) / reporteData.ventasPorMes[index - 1].ingresos * 100).toFixed(1)
+                                        : 0;
+                                    const promedioPorReserva = mes.reservas > 0 ? (mes.ingresos / mes.reservas) : 0;
+
+                                    return (
+                                        <tr key={index}>
+                                            <td>{mes.mes}</td>
+                                            <td>{mes.reservas}</td>
+                                            <td>${mes.ingresos.toLocaleString()}</td>
+                                            <td>${promedioPorReserva.toLocaleString()}</td>
+                                            <td className={crecimiento >= 0 ? 'text-success' : 'text-danger'}>
+                                                {crecimiento >= 0 ? '+' : ''}{crecimiento}%
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    ) : (
+                        <p>No hay datos de ventas para el período seleccionado</p>
+                    )}
                 </div>
             </div>
         </div>
@@ -245,52 +312,66 @@ function Reportes() {
         <div className="reportes-content">
             <h3>🏢 Reporte de Ocupación de Espacios</h3>
             <div className="reportes-grid">
-                {reporteData.espaciosMasReservados.map((espacio, index) => (
-                    <div key={index} className="space-ocupacion-card">
-                        <h4>{espacio.nombre}</h4>
-                        <div className="ocupacion-stats">
-                            <div className="ocupacion-circle">
-                                <svg width="120" height="120">
-                                    <circle
-                                        cx="60"
-                                        cy="60"
-                                        r="50"
-                                        stroke="#eee"
-                                        strokeWidth="10"
-                                        fill="none"
-                                    />
-                                    <circle
-                                        cx="60"
-                                        cy="60"
-                                        r="50"
-                                        stroke="#667eea"
-                                        strokeWidth="10"
-                                        fill="none"
-                                        strokeDasharray={`${espacio.ocupacion * 3.14} 314`}
-                                        transform="rotate(-90 60 60)"
-                                    />
-                                    <text
-                                        x="60"
-                                        y="60"
-                                        textAnchor="middle"
-                                        dy="0.3em"
-                                        fontSize="18"
-                                        fontWeight="bold"
-                                    >
-                                        {espacio.ocupacion}%
-                                    </text>
-                                </svg>
-                            </div>
-                            <div className="ocupacion-details">
-                                <p><strong>{espacio.reservas}</strong> reservas</p>
-                                <p><strong>${espacio.ingresos.toLocaleString()}</strong> ingresos</p>
+                {reporteData.espaciosMasReservados.length > 0 ? (
+                    reporteData.espaciosMasReservados.map((espacio, index) => (
+                        <div key={index} className="space-ocupacion-card">
+                            <h4>{espacio.nombre}</h4>
+                            <div className="ocupacion-stats">
+                                <div className="ocupacion-circle">
+                                    <svg width="120" height="120">
+                                        <circle
+                                            cx="60"
+                                            cy="60"
+                                            r="50"
+                                            stroke="#eee"
+                                            strokeWidth="10"
+                                            fill="none"
+                                        />
+                                        <circle
+                                            cx="60"
+                                            cy="60"
+                                            r="50"
+                                            stroke="#667eea"
+                                            strokeWidth="10"
+                                            fill="none"
+                                            strokeDasharray={`${Math.min(espacio.ocupacion, 100) * 3.14} 314`}
+                                            transform="rotate(-90 60 60)"
+                                        />
+                                        <text
+                                            x="60"
+                                            y="60"
+                                            textAnchor="middle"
+                                            dy="0.3em"
+                                            fontSize="18"
+                                            fontWeight="bold"
+                                        >
+                                            {espacio.ocupacion.toFixed(1)}%
+                                        </text>
+                                    </svg>
+                                </div>
+                                <div className="ocupacion-details">
+                                    <p><strong>{espacio.reservas}</strong> reservas</p>
+                                    <p><strong>${espacio.ingresos.toLocaleString()}</strong> ingresos</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
+                    ))
+                ) : (
+                    <p>No hay datos de ocupación para el período seleccionado</p>
+                )}
             </div>
         </div>
     );
+
+    if (loading) {
+        return (
+            <div className="section-container">
+                <div className="loading-container">
+                    <p>Cargando datos de reportes...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="section-container">
@@ -348,6 +429,15 @@ function Reportes() {
                             value={filtroFecha.hasta}
                             onChange={handleFiltroChange}
                         />
+                    </div>
+                    <div className="form-group">
+                        <button
+                            className="btn-primary"
+                            onClick={loadReporteData}
+                            style={{ marginTop: '25px' }}
+                        >
+                            🔄 Actualizar
+                        </button>
                     </div>
                 </div>
             </div>

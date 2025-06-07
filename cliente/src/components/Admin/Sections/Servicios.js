@@ -6,6 +6,8 @@ function Servicios() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedServicio, setSelectedServicio] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         nombre: '',
         descripcion: '',
@@ -16,6 +18,8 @@ function Servicios() {
         tiempoPreparacion: '',
         observaciones: ''
     });
+
+    const API_BASE_URL = 'http://localhost:3001';
 
     const categorias = [
         'Catering',
@@ -33,7 +37,23 @@ function Servicios() {
     }, []);
 
     const loadServicios = async () => {
+        setLoading(true);
+        setError('');
         try {
+            const response = await fetch(`${API_BASE_URL}/api/servicios`);
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            setServicios(data);
+            console.log('Servicios cargados desde la BD:', data);
+        } catch (error) {
+            console.error('Error cargando servicios:', error);
+            setError('Error al cargar los servicios. Verifique la conexión con el servidor.');
+
+            // Fallback a datos mock en caso de error
             const mockData = [
                 {
                     id: 1,
@@ -44,49 +64,13 @@ function Servicios() {
                     disponible: true,
                     proveedorExterno: false,
                     tiempoPreparacion: '2 días',
-                    observaciones: 'Incluye meseros y vajilla',
-                    reservasActivas: 12
-                },
-                {
-                    id: 2,
-                    nombre: 'Decoración Temática Infantil',
-                    descripcion: 'Decoración completa para fiestas infantiles con globos y figuras',
-                    precio: 180000,
-                    categoria: 'Decoración',
-                    disponible: true,
-                    proveedorExterno: true,
-                    tiempoPreparacion: '1 día',
-                    observaciones: 'Requiere confirmación con 3 días de anticipación',
-                    reservasActivas: 8
-                },
-                {
-                    id: 3,
-                    nombre: 'Sistema de Sonido Profesional',
-                    descripcion: 'Equipo de sonido completo con micrófonos y DJ',
-                    precio: 250000,
-                    categoria: 'Sonido y Música',
-                    disponible: false,
-                    proveedorExterno: false,
-                    tiempoPreparacion: '0 días',
-                    observaciones: 'En mantenimiento hasta el 20/06',
-                    reservasActivas: 5
-                },
-                {
-                    id: 4,
-                    nombre: 'Fotografía Profesional',
-                    descripcion: 'Sesión fotográfica de 4 horas con entrega digital',
-                    precio: 320000,
-                    categoria: 'Fotografía',
-                    disponible: true,
-                    proveedorExterno: true,
-                    tiempoPreparacion: '0 días',
-                    observaciones: 'Incluye edición básica',
-                    reservasActivas: 15
+                    observaciones: 'Incluye meseros y vajilla - Datos de prueba sin conexión a BD',
+                    reservasActivas: 0
                 }
             ];
             setServicios(mockData);
-        } catch (error) {
-            console.error('Error cargando servicios:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -100,48 +84,113 @@ function Servicios() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
+
         try {
-            if (selectedServicio) {
-                console.log('Actualizando servicio:', formData);
-            } else {
-                console.log('Creando nuevo servicio:', formData);
+            const url = selectedServicio
+                ? `${API_BASE_URL}/api/servicios/${selectedServicio.id}`
+                : `${API_BASE_URL}/api/servicios`;
+
+            const method = selectedServicio ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    nombre: formData.nombre,
+                    precio: parseFloat(formData.precio)
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al guardar servicio');
             }
+
+            const result = await response.json();
+            console.log(selectedServicio ? 'Servicio actualizado:' : 'Servicio creado:', result);
+
             closeModal();
-            loadServicios();
+            await loadServicios(); // Recargar la lista
+
         } catch (error) {
             console.error('Error al guardar servicio:', error);
+            setError(error.message || 'Error al guardar el servicio');
+        } finally {
+            setLoading(false);
         }
     };
 
     const openModal = (servicio = null) => {
         if (servicio) {
             setSelectedServicio(servicio);
-            setFormData(servicio);
+            setFormData({
+                nombre: servicio.nombre,
+                descripcion: servicio.descripcion,
+                precio: servicio.precio,
+                categoria: servicio.categoria,
+                disponible: servicio.disponible,
+                proveedorExterno: servicio.proveedorExterno,
+                tiempoPreparacion: servicio.tiempoPreparacion,
+                observaciones: servicio.observaciones
+            });
         } else {
             setSelectedServicio(null);
             setFormData({
                 nombre: '',
                 descripcion: '',
                 precio: '',
-                categoria: '',
+                categoria: 'Otros',
                 disponible: true,
                 proveedorExterno: false,
-                tiempoPreparacion: '',
+                tiempoPreparacion: '1 día',
                 observaciones: ''
             });
         }
+        setError('');
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedServicio(null);
+        setError('');
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('¿Está seguro de que desea eliminar este servicio?')) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/servicios/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al eliminar servicio');
+            }
+
+            console.log('Servicio eliminado:', id);
+            await loadServicios();
+
+        } catch (error) {
+            console.error('Error al eliminar servicio:', error);
+            setError(error.message || 'Error al eliminar el servicio');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const toggleDisponibilidad = async (id) => {
         try {
             console.log('Cambiando disponibilidad del servicio:', id);
-            loadServicios();
+            alert('Esta funcionalidad requiere agregar campos adicionales a la tabla servicio en la BD');
         } catch (error) {
             console.error('Error al cambiar disponibilidad:', error);
         }
@@ -152,8 +201,32 @@ function Servicios() {
         servicio.categoria.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    if (loading && servicios.length === 0) {
+        return (
+            <div className="section-container">
+                <div className="loading-message">
+                    <h2>Cargando servicios...</h2>
+                    <p>Conectando con la base de datos...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="section-container">
+            {error && (
+                <div className="error-message" style={{
+                    backgroundColor: '#ffebee',
+                    color: '#c62828',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    marginBottom: '20px',
+                    border: '1px solid #ffcdd2'
+                }}>
+                    {error}
+                </div>
+            )}
+
             <div className="section-header">
                 <div className="header-content">
                     <h1>
@@ -162,7 +235,11 @@ function Servicios() {
                     </h1>
                     <p>Gestiona los servicios complementarios para eventos</p>
                 </div>
-                <button className="btn-primary" onClick={() => openModal()}>
+                <button
+                    className="btn-primary"
+                    onClick={() => openModal()}
+                    disabled={loading}
+                >
                     <span>➕</span>
                     Nuevo Servicio
                 </button>
@@ -261,19 +338,45 @@ function Servicios() {
                                 <button
                                     className="btn-edit"
                                     onClick={() => openModal(servicio)}
+                                    disabled={loading}
                                 >
                                     ✏️ Editar
                                 </button>
                                 <button
                                     className={`btn-toggle ${servicio.disponible ? 'btn-disable' : 'btn-enable'}`}
                                     onClick={() => toggleDisponibilidad(servicio.id)}
+                                    disabled={loading}
                                 >
                                     {servicio.disponible ? '🚫 Deshabilitar' : '✅ Habilitar'}
+                                </button>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => handleDelete(servicio.id)}
+                                    disabled={loading}
+                                    style={{ backgroundColor: '#dc3545', color: 'white' }}
+                                >
+                                    🗑️ Eliminar
                                 </button>
                             </div>
                         </div>
                     ))}
                 </div>
+
+                {filteredServicios.length === 0 && !loading && (
+                    <div className="empty-state">
+                        <h3>No se encontraron servicios</h3>
+                        <p>
+                            {searchTerm
+                                ? 'No hay servicios que coincidan con la búsqueda.'
+                                : 'No hay servicios registrados en la base de datos.'}
+                        </p>
+                        {!searchTerm && (
+                            <button className="btn-primary" onClick={() => openModal()}>
+                                Crear primer servicio
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Modal */}
@@ -295,34 +398,9 @@ function Servicios() {
                                             value={formData.nombre}
                                             onChange={handleInputChange}
                                             required
+                                            disabled={loading}
                                         />
                                     </div>
-                                    <div className="form-group">
-                                        <label>Categoría</label>
-                                        <select
-                                            name="categoria"
-                                            value={formData.categoria}
-                                            onChange={handleInputChange}
-                                            required
-                                        >
-                                            <option value="">Seleccionar categoría</option>
-                                            {categorias.map(cat => (
-                                                <option key={cat} value={cat}>{cat}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Descripción</label>
-                                    <textarea
-                                        name="descripcion"
-                                        value={formData.descripcion}
-                                        onChange={handleInputChange}
-                                        required
-                                        rows="3"
-                                    />
-                                </div>
-                                <div className="form-row">
                                     <div className="form-group">
                                         <label>Precio ($)</label>
                                         <input
@@ -332,7 +410,23 @@ function Servicios() {
                                             onChange={handleInputChange}
                                             required
                                             min="0"
+                                            disabled={loading}
                                         />
+                                    </div>
+                                </div>
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Categoría</label>
+                                        <select
+                                            name="categoria"
+                                            value={formData.categoria}
+                                            onChange={handleInputChange}
+                                            disabled={loading}
+                                        >
+                                            {categorias.map(cat => (
+                                                <option key={cat} value={cat}>{cat}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="form-group">
                                         <label>Tiempo de Preparación</label>
@@ -342,9 +436,19 @@ function Servicios() {
                                             value={formData.tiempoPreparacion}
                                             onChange={handleInputChange}
                                             placeholder="Ej: 2 días, 1 semana"
-                                            required
+                                            disabled={loading}
                                         />
                                     </div>
+                                </div>
+                                <div className="form-group">
+                                    <label>Descripción</label>
+                                    <textarea
+                                        name="descripcion"
+                                        value={formData.descripcion}
+                                        onChange={handleInputChange}
+                                        rows="3"
+                                        disabled={loading}
+                                    />
                                 </div>
                                 <div className="form-group">
                                     <label>Observaciones</label>
@@ -354,6 +458,7 @@ function Servicios() {
                                         onChange={handleInputChange}
                                         rows="2"
                                         placeholder="Información adicional sobre el servicio..."
+                                        disabled={loading}
                                     />
                                 </div>
                                 <div className="form-row">
@@ -364,6 +469,7 @@ function Servicios() {
                                                 name="disponible"
                                                 checked={formData.disponible}
                                                 onChange={handleInputChange}
+                                                disabled={loading}
                                             />
                                             Servicio disponible
                                         </label>
@@ -375,6 +481,7 @@ function Servicios() {
                                                 name="proveedorExterno"
                                                 checked={formData.proveedorExterno}
                                                 onChange={handleInputChange}
+                                                disabled={loading}
                                             />
                                             Proveedor externo
                                         </label>
@@ -382,11 +489,20 @@ function Servicios() {
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn-secondary" onClick={closeModal}>
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={closeModal}
+                                    disabled={loading}
+                                >
                                     Cancelar
                                 </button>
-                                <button type="submit" className="btn-primary">
-                                    {selectedServicio ? 'Actualizar' : 'Crear'} Servicio
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Guardando...' : (selectedServicio ? 'Actualizar' : 'Crear')} Servicio
                                 </button>
                             </div>
                         </form>

@@ -54,110 +54,111 @@ function Reservas() {
 
     const loadReservas = async () => {
         try {
-            const mockData = [
-                {
-                    id: 1,
-                    clienteId: 1,
-                    clienteNombre: 'María González',
-                    espacioId: 1,
-                    espacioNombre: 'Salón Principal',
-                    fechaEvento: '2025-06-20',
-                    horaInicio: '18:00',
-                    horaFin: '23:00',
-                    tipoEvento: 'Cumpleaños',
-                    numeroPersonas: 85,
-                    serviciosSeleccionados: [1, 2],
-                    serviciosNombres: ['Catering Premium', 'Decoración Temática'],
-                    estado: 'confirmada',
-                    fechaCreacion: '2025-05-15',
-                    observaciones: 'Cumpleaños de 50 años, decoración en dorado',
-                    costoEspacio: 380000,
-                    costoServicios: 630000,
-                    descuento: 50000,
-                    costoTotal: 960000,
-                    anticipo: 480000,
-                    saldoPendiente: 480000
-                },
-                {
-                    id: 2,
-                    clienteId: 2,
-                    clienteNombre: 'Carlos Pérez',
-                    espacioId: 2,
-                    espacioNombre: 'Salón VIP',
-                    fechaEvento: '2025-07-05',
-                    horaInicio: '19:00',
-                    horaFin: '01:00',
-                    tipoEvento: 'Evento Corporativo',
-                    numeroPersonas: 45,
-                    serviciosSeleccionados: [3, 4],
-                    serviciosNombres: ['Sistema de Sonido', 'Fotografía Profesional'],
-                    estado: 'pendiente',
-                    fechaCreacion: '2025-06-01',
-                    observaciones: 'Cena de fin de año empresa',
-                    costoEspacio: 550000,
-                    costoServicios: 570000,
-                    descuento: 0,
-                    costoTotal: 1120000,
-                    anticipo: 300000,
-                    saldoPendiente: 820000
-                },
-                {
-                    id: 3,
-                    clienteId: 3,
-                    clienteNombre: 'Ana López',
-                    espacioId: 4,
-                    espacioNombre: 'Sala de Reuniones',
-                    fechaEvento: '2025-06-15',
-                    horaInicio: '15:00',
-                    horaFin: '19:00',
-                    tipoEvento: 'Baby Shower',
-                    numeroPersonas: 20,
-                    serviciosSeleccionados: [2],
-                    serviciosNombres: ['Decoración Temática'],
-                    estado: 'completada',
-                    fechaCreacion: '2025-05-20',
-                    observaciones: 'Baby shower íntimo',
-                    costoEspacio: 150000,
-                    costoServicios: 180000,
-                    descuento: 0,
-                    costoTotal: 330000,
-                    anticipo: 330000,
-                    saldoPendiente: 0
-                }
-            ];
-            setReservas(mockData);
+            const response = await fetch('http://localhost:3001/api/reservas');
+            if (response.ok) {
+                const data = await response.json();
+                setReservas(data);
+                console.log('Reservas cargadas desde BD:', data.length);
+            } else {
+                console.error('Error al cargar reservas:', response.statusText);
+                // Mantener datos mock como fallback
+                const mockData = [
+                    {
+                        id: 1,
+                        clienteId: 1,
+                        clienteNombre: 'María González',
+                        espacioId: 1,
+                        espacioNombre: 'Salón Principal',
+                        fechaEvento: '2025-06-20',
+                        horaInicio: '18:00',
+                        horaFin: '23:00',
+                        tipoEvento: 'Cumpleaños',
+                        numeroPersonas: 85,
+                        serviciosSeleccionados: [1, 2],
+                        serviciosNombres: ['Catering Premium', 'Decoración Temática'],
+                        estado: 'confirmada',
+                        fechaCreacion: '2025-05-15',
+                        observaciones: 'Cumpleaños de 50 años, decoración en dorado',
+                        costoEspacio: 380000,
+                        costoServicios: 630000,
+                        descuento: 50000,
+                        costoTotal: 960000,
+                        anticipo: 480000,
+                        saldoPendiente: 480000
+                    }
+                ];
+                setReservas(mockData);
+            }
         } catch (error) {
             console.error('Error cargando reservas:', error);
+            // Usar datos mock como fallback en caso de error de conexión
+            setReservas([]);
         }
     };
 
     const loadClientes = async () => {
-        const mockClientes = [
-            { id: 1, nombre: 'María González' },
-            { id: 2, nombre: 'Carlos Pérez' },
-            { id: 3, nombre: 'Ana López' }
-        ];
-        setClientes(mockClientes);
+        try {
+            const response = await fetch('http://localhost:3001/api/reservas/clientes');
+            if (response.ok) {
+                const data = await response.json();
+                setClientes(data);
+                console.log('Clientes cargados desde BD:', data.length);
+            } else {
+                const mockClientes = [
+                    { id: 1, nombre: 'María González' },
+                    { id: 2, nombre: 'Carlos Pérez' },
+                    { id: 3, nombre: 'Ana López' }
+                ];
+                setClientes(mockClientes);
+            }
+        } catch (error) {
+            console.error('Error cargando clientes:', error);
+            setClientes([]);
+        }
     };
 
     const loadEspacios = async () => {
-        const mockEspacios = [
-            { id: 1, nombre: 'Salón Principal', capacidad: 120, costo: 380000 },
-            { id: 2, nombre: 'Salón VIP', capacidad: 60, costo: 550000 },
-            { id: 3, nombre: 'Terraza Jardín', capacidad: 80, costo: 280000 },
-            { id: 4, nombre: 'Sala de Reuniones', capacidad: 25, costo: 150000 }
-        ];
-        setEspacios(mockEspacios);
+        try {
+            const response = await fetch('http://localhost:3001/api/reservas/espacios');
+            if (response.ok) {
+                const data = await response.json();
+                setEspacios(data);
+                console.log('Espacios cargados desde BD:', data.length);
+            } else {
+                const mockEspacios = [
+                    { id: 1, nombre: 'Salón Principal', capacidad: 120, costo: 380000 },
+                    { id: 2, nombre: 'Salón VIP', capacidad: 60, costo: 550000 },
+                    { id: 3, nombre: 'Terraza Jardín', capacidad: 80, costo: 280000 },
+                    { id: 4, nombre: 'Sala de Reuniones', capacidad: 25, costo: 150000 }
+                ];
+                setEspacios(mockEspacios);
+            }
+        } catch (error) {
+            console.error('Error cargando espacios:', error);
+            setEspacios([]);
+        }
     };
 
     const loadServicios = async () => {
-        const mockServicios = [
-            { id: 1, nombre: 'Catering Premium', precio: 450000 },
-            { id: 2, nombre: 'Decoración Temática', precio: 180000 },
-            { id: 3, nombre: 'Sistema de Sonido', precio: 250000 },
-            { id: 4, nombre: 'Fotografía Profesional', precio: 320000 }
-        ];
-        setServicios(mockServicios);
+        try {
+            const response = await fetch('http://localhost:3001/api/reservas/servicios');
+            if (response.ok) {
+                const data = await response.json();
+                setServicios(data);
+                console.log('Servicios cargados desde BD:', data.length);
+            } else {
+                const mockServicios = [
+                    { id: 1, nombre: 'Catering Premium', precio: 450000 },
+                    { id: 2, nombre: 'Decoración Temática', precio: 180000 },
+                    { id: 3, nombre: 'Sistema de Sonido', precio: 250000 },
+                    { id: 4, nombre: 'Fotografía Profesional', precio: 320000 }
+                ];
+                setServicios(mockServicios);
+            }
+        } catch (error) {
+            console.error('Error cargando servicios:', error);
+            setServicios([]);
+        }
     };
 
     const handleInputChange = (e) => {
@@ -195,22 +196,53 @@ function Reservas() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const costoTotal = calcularCostoTotal();
+            const costoTotal = calcularCostoTotal(); // Línea 199 - ahora SÍ se usará
             const datosReserva = {
-                ...formData,
-                costoTotal,
-                saldoPendiente: costoTotal - (formData.anticipo || 0)
+                clienteId: parseInt(formData.clienteId),
+                espacioId: parseInt(formData.espacioId),
+                fechaEvento: formData.fechaEvento,
+                horaInicio: formData.horaInicio,
+                horaFin: formData.horaFin,
+                tipoEvento: formData.tipoEvento,
+                numeroPersonas: parseInt(formData.numeroPersonas),
+                serviciosSeleccionados: formData.serviciosSeleccionados,
+                estado: formData.estado,
+                observaciones: formData.observaciones,
+                descuento: parseFloat(formData.descuento) || 0,
+                anticipo: parseFloat(formData.anticipo) || 0,
+                costoTotal: costoTotal // AGREGAR ESTA LÍNEA - usar la variable calculada
             };
 
-            if (selectedReserva) {
-                console.log('Actualizando reserva:', datosReserva);
+            const url = selectedReserva
+                ? `http://localhost:3001/api/reservas/${selectedReserva.id}`
+                : 'http://localhost:3001/api/reservas';
+
+            const method = selectedReserva ? 'PUT' : 'POST';
+
+            console.log('Enviando datos de reserva:', datosReserva);
+            console.log('Costo total calculado:', costoTotal); // También usar aquí para logging
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(datosReserva)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log(selectedReserva ? 'Reserva actualizada:' : 'Reserva creada:', result);
+                closeModal();
+                loadReservas(); // Recargar la lista
             } else {
-                console.log('Creando nueva reserva:', datosReserva);
+                const errorData = await response.json();
+                console.error('Error al guardar reserva:', errorData.error);
+                alert(errorData.error || 'Error al guardar la reserva');
             }
-            closeModal();
-            loadReservas();
         } catch (error) {
             console.error('Error al guardar reserva:', error);
+            alert('Error de conexión al guardar la reserva');
         }
     };
 
@@ -228,8 +260,8 @@ function Reservas() {
                 serviciosSeleccionados: reserva.serviciosSeleccionados,
                 estado: reserva.estado,
                 observaciones: reserva.observaciones,
-                descuento: reserva.descuento,
-                anticipo: reserva.anticipo
+                descuento: reserva.descuento || 0,
+                anticipo: reserva.anticipo || 0
             });
         } else {
             setSelectedReserva(null);
@@ -259,9 +291,27 @@ function Reservas() {
     const cambiarEstadoReserva = async (id, nuevoEstado) => {
         try {
             console.log('Cambiando estado de reserva:', id, 'a:', nuevoEstado);
-            loadReservas();
+
+            const response = await fetch(`http://localhost:3001/api/reservas/${id}/estado`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ estado: nuevoEstado })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Estado cambiado correctamente:', result);
+                loadReservas(); // Recargar la lista
+            } else {
+                const errorData = await response.json();
+                console.error('Error al cambiar estado:', errorData.error);
+                alert(errorData.error || 'Error al cambiar el estado');
+            }
         } catch (error) {
             console.error('Error al cambiar estado:', error);
+            alert('Error de conexión al cambiar el estado');
         }
     };
 
@@ -375,7 +425,7 @@ function Reservas() {
                                     <td>
                                         <strong>{reserva.espacioNombre}</strong>
                                         <br />
-                                        <small>{reserva.serviciosNombres.join(', ')}</small>
+                                        <small>{reserva.serviciosNombres ? reserva.serviciosNombres.join(', ') : 'Sin servicios'}</small>
                                     </td>
                                     <td>
                                         <div>
@@ -407,6 +457,7 @@ function Reservas() {
                                                 <button
                                                     className="btn-edit"
                                                     onClick={() => cambiarEstadoReserva(reserva.id, 'confirmada')}
+                                                    title="Confirmar reserva"
                                                 >
                                                     ✅
                                                 </button>

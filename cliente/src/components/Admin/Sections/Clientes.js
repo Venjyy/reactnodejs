@@ -1,22 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import './Sections.css'; // Asegúrate de tener este archivo CSS para estilos
+import './Sections.css';
 
 function Clientes() {
     const [clientes, setClientes] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedCliente, setSelectedCliente] = useState(null);
+    const [loading, setLoading] = useState(true);
     const [formData, setFormData] = useState({
         nombre: '',
-        apellido: '',
         rut: '',
-        email: '',
-        telefono: '',
-        direccion: '',
-        fechaNacimiento: '',
-        tipoCliente: 'particular',
-        empresa: '',
-        observaciones: ''
+        correo: '',
+        telefono: ''
     });
 
     useEffect(() => {
@@ -25,59 +20,19 @@ function Clientes() {
 
     const loadClientes = async () => {
         try {
-            const mockData = [
-                {
-                    id: 1,
-                    nombre: 'María',
-                    apellido: 'González',
-                    rut: '12.345.678-9',
-                    email: 'maria.gonzalez@email.com',
-                    telefono: '+56 9 8765 4321',
-                    direccion: 'Av. Principal 123, Santiago',
-                    fechaNacimiento: '1985-03-15',
-                    tipoCliente: 'particular',
-                    empresa: '',
-                    observaciones: 'Cliente VIP',
-                    fechaRegistro: '2024-01-15',
-                    totalReservas: 8,
-                    ultimaReserva: '2025-05-20'
-                },
-                {
-                    id: 2,
-                    nombre: 'Carlos',
-                    apellido: 'Pérez',
-                    rut: '98.765.432-1',
-                    email: 'carlos.perez@empresa.cl',
-                    telefono: '+56 9 1234 5678',
-                    direccion: 'Calle Comercial 456, Valparaíso',
-                    fechaNacimiento: '1978-11-28',
-                    tipoCliente: 'empresa',
-                    empresa: 'Eventos Corporativos SpA',
-                    observaciones: 'Contacto preferencial vía email',
-                    fechaRegistro: '2023-08-10',
-                    totalReservas: 15,
-                    ultimaReserva: '2025-06-01'
-                },
-                {
-                    id: 3,
-                    nombre: 'Ana',
-                    apellido: 'López',
-                    rut: '15.987.654-3',
-                    email: 'ana.lopez@gmail.com',
-                    telefono: '+56 9 5555 0000',
-                    direccion: 'Pasaje Los Rosales 789, Concepción',
-                    fechaNacimiento: '1992-07-12',
-                    tipoCliente: 'particular',
-                    empresa: '',
-                    observaciones: '',
-                    fechaRegistro: '2025-02-20',
-                    totalReservas: 2,
-                    ultimaReserva: '2025-05-15'
-                }
-            ];
-            setClientes(mockData);
+            setLoading(true);
+            const response = await fetch('http://localhost:3001/clientes');
+
+            if (response.ok) {
+                const data = await response.json();
+                setClientes(data);
+            } else {
+                console.error('Error al cargar clientes:', response.status);
+            }
         } catch (error) {
             console.error('Error cargando clientes:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -91,35 +46,73 @@ function Clientes() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            if (selectedCliente) {
-                console.log('Actualizando cliente:', formData);
+            const url = selectedCliente
+                ? `http://localhost:3001/clientes/${selectedCliente.id}`
+                : 'http://localhost:3001/clientes';
+
+            const method = selectedCliente ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert(result.message);
+                closeModal();
+                loadClientes();
             } else {
-                console.log('Creando nuevo cliente:', formData);
+                const error = await response.json();
+                alert(`Error: ${error.error}`);
             }
-            closeModal();
-            loadClientes();
         } catch (error) {
             console.error('Error al guardar cliente:', error);
+            alert('Error al guardar cliente');
+        }
+    };
+
+    const handleDelete = async (clienteId) => {
+        if (window.confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
+            try {
+                const response = await fetch(`http://localhost:3001/clientes/${clienteId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    alert(result.message);
+                    loadClientes();
+                } else {
+                    const error = await response.json();
+                    alert(`Error: ${error.error}`);
+                }
+            } catch (error) {
+                console.error('Error al eliminar cliente:', error);
+                alert('Error al eliminar cliente');
+            }
         }
     };
 
     const openModal = (cliente = null) => {
         if (cliente) {
             setSelectedCliente(cliente);
-            setFormData(cliente);
+            setFormData({
+                nombre: cliente.nombre,
+                rut: cliente.rut,
+                correo: cliente.correo || '',
+                telefono: cliente.telefono || ''
+            });
         } else {
             setSelectedCliente(null);
             setFormData({
                 nombre: '',
-                apellido: '',
                 rut: '',
-                email: '',
-                telefono: '',
-                direccion: '',
-                fechaNacimiento: '',
-                tipoCliente: 'particular',
-                empresa: '',
-                observaciones: ''
+                correo: '',
+                telefono: ''
             });
         }
         setIsModalOpen(true);
@@ -130,12 +123,36 @@ function Clientes() {
         setSelectedCliente(null);
     };
 
+    const formatearFecha = (fechaString) => {
+        if (!fechaString) return 'Sin reservas';
+        const fecha = new Date(fechaString);
+        return fecha.toLocaleDateString('es-ES');
+    };
+
+    const obtenerIniciales = (nombre) => {
+        if (!nombre) return '??';
+        const palabras = nombre.split(' ');
+        if (palabras.length >= 2) {
+            return `${palabras[0][0]}${palabras[1][0]}`.toUpperCase();
+        }
+        return nombre.substring(0, 2).toUpperCase();
+    };
+
     const filteredClientes = clientes.filter(cliente =>
         cliente.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.apellido.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (cliente.correo && cliente.correo.toLowerCase().includes(searchTerm.toLowerCase())) ||
         cliente.rut.includes(searchTerm)
     );
+
+    if (loading) {
+        return (
+            <div className="section-container">
+                <div className="loading-container">
+                    <p>Cargando clientes...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="section-container">
@@ -162,23 +179,23 @@ function Clientes() {
                     </div>
                 </div>
                 <div className="stat-item">
-                    <span className="stat-icon">👤</span>
+                    <span className="stat-icon">📧</span>
                     <div>
-                        <h3>{clientes.filter(c => c.tipoCliente === 'particular').length}</h3>
-                        <p>Particulares</p>
+                        <h3>{clientes.filter(c => c.correo).length}</h3>
+                        <p>Con Email</p>
                     </div>
                 </div>
                 <div className="stat-item">
-                    <span className="stat-icon">🏢</span>
+                    <span className="stat-icon">📱</span>
                     <div>
-                        <h3>{clientes.filter(c => c.tipoCliente === 'empresa').length}</h3>
-                        <p>Empresas</p>
+                        <h3>{clientes.filter(c => c.telefono).length}</h3>
+                        <p>Con Teléfono</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📊</span>
                     <div>
-                        <h3>{clientes.reduce((sum, c) => sum + c.totalReservas, 0)}</h3>
+                        <h3>{clientes.reduce((sum, c) => sum + (c.total_reservas || 0), 0)}</h3>
                         <p>Total Reservas</p>
                     </div>
                 </div>
@@ -204,54 +221,71 @@ function Clientes() {
                             <tr>
                                 <th>Cliente</th>
                                 <th>Contacto</th>
-                                <th>Tipo</th>
                                 <th>Reservas</th>
                                 <th>Última Reserva</th>
+                                <th>Fecha Registro</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredClientes.map(cliente => (
-                                <tr key={cliente.id}>
-                                    <td>
-                                        <div className="client-info">
-                                            <div className="client-avatar">
-                                                {cliente.nombre.charAt(0)}{cliente.apellido.charAt(0)}
+                            {filteredClientes.length > 0 ? (
+                                filteredClientes.map(cliente => (
+                                    <tr key={cliente.id}>
+                                        <td>
+                                            <div className="client-info">
+                                                <div className="client-avatar">
+                                                    {obtenerIniciales(cliente.nombre)}
+                                                </div>
+                                                <div>
+                                                    <div><strong>{cliente.nombre}</strong></div>
+                                                    <small>{cliente.rut}</small>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <div><strong>{cliente.nombre} {cliente.apellido}</strong></div>
-                                                <small>{cliente.rut}</small>
+                                        </td>
+                                        <td>
+                                            <div className="contact-info">
+                                                <div>📧 {cliente.correo || 'Sin email'}</div>
+                                                <div>📱 {cliente.telefono || 'Sin teléfono'}</div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <div className="contact-info">
-                                            <div>📧 {cliente.email}</div>
-                                            <div>📱 {cliente.telefono}</div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span className={`badge ${cliente.tipoCliente === 'empresa' ? 'badge-info' : 'badge-success'}`}>
-                                            {cliente.tipoCliente === 'empresa' ? '🏢 Empresa' : '👤 Particular'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <strong>{cliente.totalReservas}</strong>
-                                        <br />
-                                        <small>reservas</small>
-                                    </td>
-                                    <td>
-                                        {new Date(cliente.ultimaReserva).toLocaleDateString()}
-                                    </td>
-                                    <td>
-                                        <div className="action-buttons">
-                                            <button className="btn-view">👁️</button>
-                                            <button className="btn-edit" onClick={() => openModal(cliente)}>✏️</button>
-                                            <button className="btn-delete">🗑️</button>
-                                        </div>
+                                        </td>
+                                        <td>
+                                            <strong>{cliente.total_reservas || 0}</strong>
+                                            <br />
+                                            <small>reservas</small>
+                                        </td>
+                                        <td>
+                                            {formatearFecha(cliente.ultima_reserva)}
+                                        </td>
+                                        <td>
+                                            {formatearFecha(cliente.fecha_creacion)}
+                                        </td>
+                                        <td>
+                                            <div className="action-buttons">
+                                                <button
+                                                    className="btn-edit"
+                                                    onClick={() => openModal(cliente)}
+                                                    title="Editar cliente"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    className="btn-delete"
+                                                    onClick={() => handleDelete(cliente.id)}
+                                                    title="Eliminar cliente"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>
+                                        No se encontraron clientes
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
@@ -269,27 +303,16 @@ function Clientes() {
                             <div className="modal-body">
                                 <div className="form-row">
                                     <div className="form-group">
-                                        <label>Nombre</label>
+                                        <label>Nombre Completo</label>
                                         <input
                                             type="text"
                                             name="nombre"
                                             value={formData.nombre}
                                             onChange={handleInputChange}
                                             required
+                                            placeholder="Ingrese el nombre completo"
                                         />
                                     </div>
-                                    <div className="form-group">
-                                        <label>Apellido</label>
-                                        <input
-                                            type="text"
-                                            name="apellido"
-                                            value={formData.apellido}
-                                            onChange={handleInputChange}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                <div className="form-row">
                                     <div className="form-group">
                                         <label>RUT</label>
                                         <input
@@ -301,28 +324,16 @@ function Clientes() {
                                             required
                                         />
                                     </div>
-                                    <div className="form-group">
-                                        <label>Tipo de Cliente</label>
-                                        <select
-                                            name="tipoCliente"
-                                            value={formData.tipoCliente}
-                                            onChange={handleInputChange}
-                                            required
-                                        >
-                                            <option value="particular">Particular</option>
-                                            <option value="empresa">Empresa</option>
-                                        </select>
-                                    </div>
                                 </div>
                                 <div className="form-row">
                                     <div className="form-group">
                                         <label>Email</label>
                                         <input
                                             type="email"
-                                            name="email"
-                                            value={formData.email}
+                                            name="correo"
+                                            value={formData.correo}
                                             onChange={handleInputChange}
-                                            required
+                                            placeholder="ejemplo@correo.com"
                                         />
                                     </div>
                                     <div className="form-group">
@@ -332,52 +343,9 @@ function Clientes() {
                                             name="telefono"
                                             value={formData.telefono}
                                             onChange={handleInputChange}
-                                            required
+                                            placeholder="+56 9 1234 5678"
                                         />
                                     </div>
-                                </div>
-                                <div className="form-group">
-                                    <label>Dirección</label>
-                                    <input
-                                        type="text"
-                                        name="direccion"
-                                        value={formData.direccion}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-                                <div className="form-row">
-                                    <div className="form-group">
-                                        <label>Fecha de Nacimiento</label>
-                                        <input
-                                            type="date"
-                                            name="fechaNacimiento"
-                                            value={formData.fechaNacimiento}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    {formData.tipoCliente === 'empresa' && (
-                                        <div className="form-group">
-                                            <label>Empresa</label>
-                                            <input
-                                                type="text"
-                                                name="empresa"
-                                                value={formData.empresa}
-                                                onChange={handleInputChange}
-                                                placeholder="Nombre de la empresa"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="form-group">
-                                    <label>Observaciones</label>
-                                    <textarea
-                                        name="observaciones"
-                                        value={formData.observaciones}
-                                        onChange={handleInputChange}
-                                        rows="3"
-                                        placeholder="Información adicional sobre el cliente..."
-                                    />
                                 </div>
                             </div>
                             <div className="modal-footer">

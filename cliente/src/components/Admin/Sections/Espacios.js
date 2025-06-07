@@ -6,6 +6,8 @@ function Espacios() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedEspacio, setSelectedEspacio] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const [formData, setFormData] = useState({
         nombre: '',
         descripcion: '',
@@ -31,12 +33,30 @@ function Espacios() {
         'Otro'
     ];
 
+    const API_BASE_URL = 'http://localhost:3001';
+
     useEffect(() => {
         loadEspacios();
     }, []);
 
     const loadEspacios = async () => {
+        setLoading(true);
+        setError('');
         try {
+            const response = await fetch(`${API_BASE_URL}/api/espacios`);
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            setEspacios(data);
+            console.log('Espacios cargados desde la BD:', data);
+        } catch (error) {
+            console.error('Error cargando espacios:', error);
+            setError('Error al cargar los espacios. Verifique la conexión con el servidor.');
+
+            // Fallback a datos mock en caso de error
             const mockData = [
                 {
                     id: 1,
@@ -52,56 +72,11 @@ function Espacios() {
                     dimensiones: '15m x 20m',
                     observaciones: 'Espacio más solicitado, reservar con anticipación',
                     reservasActuales: 8
-                },
-                {
-                    id: 2,
-                    nombre: 'Salón VIP',
-                    descripcion: 'Exclusivo salón para eventos premium con servicios de lujo',
-                    capacidadMaxima: 60,
-                    costoBase: 550000,
-                    ubicacion: 'Segundo Piso',
-                    disponible: true,
-                    equipamiento: 'Mobiliario premium, sistema audiovisual HD, barra, climatización',
-                    caracteristicas: 'Vista panorámica, baño privado, zona de espera',
-                    tipoEspacio: 'Salón VIP',
-                    dimensiones: '12m x 15m',
-                    observaciones: 'Incluye servicio de meseros',
-                    reservasActuales: 5
-                },
-                {
-                    id: 3,
-                    nombre: 'Terraza Jardín',
-                    descripcion: 'Hermosa terraza al aire libre con vista al jardín',
-                    capacidadMaxima: 80,
-                    costoBase: 280000,
-                    ubicacion: 'Exterior',
-                    disponible: false,
-                    equipamiento: 'Pérgola, calefactores, iluminación exterior',
-                    caracteristicas: 'Al aire libre, vista al jardín, techo retráctil',
-                    tipoEspacio: 'Terraza',
-                    dimensiones: '10m x 18m',
-                    observaciones: 'No disponible en temporada de lluvias (hasta julio)',
-                    reservasActuales: 3
-                },
-                {
-                    id: 4,
-                    nombre: 'Sala de Reuniones',
-                    descripcion: 'Espacio íntimo para reuniones familiares pequeñas',
-                    capacidadMaxima: 25,
-                    costoBase: 150000,
-                    ubicacion: 'Planta Principal',
-                    disponible: true,
-                    equipamiento: 'Mesa de conferencias, proyector, pizarra',
-                    caracteristicas: 'Ambiente silencioso, wifi, climatización',
-                    tipoEspacio: 'Sala de Reuniones',
-                    dimensiones: '6m x 8m',
-                    observaciones: 'Ideal para eventos corporativos',
-                    reservasActuales: 2
                 }
             ];
             setEspacios(mockData);
-        } catch (error) {
-            console.error('Error cargando espacios:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -115,16 +90,45 @@ function Espacios() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
+
         try {
-            if (selectedEspacio) {
-                console.log('Actualizando espacio:', formData);
-            } else {
-                console.log('Creando nuevo espacio:', formData);
+            const url = selectedEspacio
+                ? `${API_BASE_URL}/api/espacios/${selectedEspacio.id}`
+                : `${API_BASE_URL}/api/espacios`;
+
+            const method = selectedEspacio ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    nombre: formData.nombre,
+                    descripcion: formData.descripcion,
+                    capacidadMaxima: parseInt(formData.capacidadMaxima),
+                    costoBase: parseFloat(formData.costoBase)
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al guardar espacio');
             }
+
+            const result = await response.json();
+            console.log(selectedEspacio ? 'Espacio actualizado:' : 'Espacio creado:', result);
+
             closeModal();
-            loadEspacios();
+            await loadEspacios(); // Recargar la lista
+
         } catch (error) {
             console.error('Error al guardar espacio:', error);
+            setError(error.message || 'Error al guardar el espacio');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -148,20 +152,72 @@ function Espacios() {
                 observaciones: ''
             });
         }
+        setError('');
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedEspacio(null);
+        setError('');
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('¿Está seguro de que desea eliminar este espacio?')) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/espacios/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al eliminar espacio');
+            }
+
+            console.log('Espacio eliminado:', id);
+            await loadEspacios(); // Recargar la lista
+
+        } catch (error) {
+            console.error('Error al eliminar espacio:', error);
+            setError(error.message || 'Error al eliminar el espacio');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const toggleDisponibilidad = async (id) => {
+        const espacio = espacios.find(e => e.id === id);
+        if (!espacio) return;
+
+        const nuevaDisponibilidad = !espacio.disponible;
+
+        setLoading(true);
         try {
-            console.log('Cambiando disponibilidad del espacio:', id);
-            loadEspacios();
+            const response = await fetch(`${API_BASE_URL}/api/espacios/${id}/disponibilidad`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ disponible: nuevaDisponibilidad })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al cambiar disponibilidad');
+            }
+
+            console.log('Disponibilidad cambiada para espacio:', id);
+            await loadEspacios(); // Recargar la lista
+
         } catch (error) {
             console.error('Error al cambiar disponibilidad:', error);
+            setError(error.message || 'Error al cambiar la disponibilidad');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -170,8 +226,32 @@ function Espacios() {
         espacio.tipoEspacio.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    if (loading && espacios.length === 0) {
+        return (
+            <div className="section-container">
+                <div className="loading-message">
+                    <h2>Cargando espacios...</h2>
+                    <p>Conectando con la base de datos...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="section-container">
+            {error && (
+                <div className="error-message" style={{
+                    backgroundColor: '#ffebee',
+                    color: '#c62828',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    marginBottom: '20px',
+                    border: '1px solid #ffcdd2'
+                }}>
+                    {error}
+                </div>
+            )}
+
             <div className="section-header">
                 <div className="header-content">
                     <h1>
@@ -180,7 +260,11 @@ function Espacios() {
                     </h1>
                     <p>Administra los espacios disponibles para eventos</p>
                 </div>
-                <button className="btn-primary" onClick={() => openModal()}>
+                <button
+                    className="btn-primary"
+                    onClick={() => openModal()}
+                    disabled={loading}
+                >
                     <span>➕</span>
                     Nuevo Espacio
                 </button>
@@ -211,7 +295,7 @@ function Espacios() {
                 <div className="stat-item">
                     <span className="stat-icon">📅</span>
                     <div>
-                        <h3>{espacios.reduce((sum, e) => sum + e.reservasActuales, 0)}</h3>
+                        <h3>{espacios.reduce((sum, e) => sum + (e.reservasActuales || 0), 0)}</h3>
                         <p>Reservas Activas</p>
                     </div>
                 </div>
@@ -251,7 +335,7 @@ function Espacios() {
                                     </div>
                                     <div className="detail-item">
                                         <span className="detail-icon">💰</span>
-                                        <span>Costo: ${espacio.costoBase.toLocaleString()}</span>
+                                        <span>Costo: ${Number(espacio.costoBase).toLocaleString()}</span>
                                     </div>
                                     <div className="detail-item">
                                         <span className="detail-icon">📍</span>
@@ -263,7 +347,7 @@ function Espacios() {
                                     </div>
                                     <div className="detail-item">
                                         <span className="detail-icon">📅</span>
-                                        <span>Reservas activas: {espacio.reservasActuales}</span>
+                                        <span>Reservas activas: {espacio.reservasActuales || 0}</span>
                                     </div>
                                 </div>
 
@@ -284,19 +368,55 @@ function Espacios() {
                                 <button
                                     className="btn-edit"
                                     onClick={() => openModal(espacio)}
+                                    disabled={loading}
                                 >
                                     ✏️ Editar
                                 </button>
+                                {/* AGREGAR ESTE BOTÓN AQUÍ: */}
                                 <button
                                     className={`btn-toggle ${espacio.disponible ? 'btn-disable' : 'btn-enable'}`}
                                     onClick={() => toggleDisponibilidad(espacio.id)}
+                                    disabled={loading}
+                                    style={{
+                                        backgroundColor: espacio.disponible ? '#dc3545' : '#28a745',
+                                        color: 'white',
+                                        marginLeft: '10px',
+                                        padding: '5px 10px',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
                                 >
                                     {espacio.disponible ? '🚫 Deshabilitar' : '✅ Habilitar'}
+                                </button>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={() => handleDelete(espacio.id)}
+                                    disabled={loading}
+                                    style={{ backgroundColor: '#dc3545', color: 'white' }}
+                                >
+                                    🗑️ Eliminar
                                 </button>
                             </div>
                         </div>
                     ))}
                 </div>
+
+                {filteredEspacios.length === 0 && !loading && (
+                    <div className="empty-state">
+                        <h3>No se encontraron espacios</h3>
+                        <p>
+                            {searchTerm
+                                ? 'No hay espacios que coincidan con la búsqueda.'
+                                : 'No hay espacios registrados en la base de datos.'}
+                        </p>
+                        {!searchTerm && (
+                            <button className="btn-primary" onClick={() => openModal()}>
+                                Crear primer espacio
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Modal */}
@@ -318,6 +438,7 @@ function Espacios() {
                                             value={formData.nombre}
                                             onChange={handleInputChange}
                                             required
+                                            disabled={loading}
                                         />
                                     </div>
                                     <div className="form-group">
@@ -326,7 +447,7 @@ function Espacios() {
                                             name="tipoEspacio"
                                             value={formData.tipoEspacio}
                                             onChange={handleInputChange}
-                                            required
+                                            disabled={loading}
                                         >
                                             <option value="">Seleccionar tipo</option>
                                             {tiposEspacio.map(tipo => (
@@ -343,6 +464,7 @@ function Espacios() {
                                         onChange={handleInputChange}
                                         required
                                         rows="3"
+                                        disabled={loading}
                                     />
                                 </div>
                                 <div className="form-row">
@@ -355,6 +477,7 @@ function Espacios() {
                                             onChange={handleInputChange}
                                             required
                                             min="1"
+                                            disabled={loading}
                                         />
                                     </div>
                                     <div className="form-group">
@@ -366,6 +489,7 @@ function Espacios() {
                                             onChange={handleInputChange}
                                             required
                                             min="0"
+                                            disabled={loading}
                                         />
                                     </div>
                                 </div>
@@ -377,7 +501,7 @@ function Espacios() {
                                             name="ubicacion"
                                             value={formData.ubicacion}
                                             onChange={handleInputChange}
-                                            required
+                                            disabled={loading}
                                         />
                                     </div>
                                     <div className="form-group">
@@ -388,6 +512,7 @@ function Espacios() {
                                             value={formData.dimensiones}
                                             onChange={handleInputChange}
                                             placeholder="Ej: 10m x 15m"
+                                            disabled={loading}
                                         />
                                     </div>
                                 </div>
@@ -399,6 +524,7 @@ function Espacios() {
                                         onChange={handleInputChange}
                                         rows="2"
                                         placeholder="Describe el equipamiento disponible..."
+                                        disabled={loading}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -409,6 +535,7 @@ function Espacios() {
                                         onChange={handleInputChange}
                                         rows="2"
                                         placeholder="Características especiales del espacio..."
+                                        disabled={loading}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -419,6 +546,7 @@ function Espacios() {
                                         onChange={handleInputChange}
                                         rows="2"
                                         placeholder="Información adicional..."
+                                        disabled={loading}
                                     />
                                 </div>
                                 <div className="form-group">
@@ -428,17 +556,27 @@ function Espacios() {
                                             name="disponible"
                                             checked={formData.disponible}
                                             onChange={handleInputChange}
+                                            disabled={loading}
                                         />
                                         Espacio disponible para reservas
                                     </label>
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn-secondary" onClick={closeModal}>
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={closeModal}
+                                    disabled={loading}
+                                >
                                     Cancelar
                                 </button>
-                                <button type="submit" className="btn-primary">
-                                    {selectedEspacio ? 'Actualizar' : 'Crear'} Espacio
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Guardando...' : (selectedEspacio ? 'Actualizar' : 'Crear')} Espacio
                                 </button>
                             </div>
                         </form>

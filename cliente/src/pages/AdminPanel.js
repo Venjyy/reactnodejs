@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import Sidebar from '../components/Admin/Layout/Sidebar';
-import AdminDashboard from '../components/Admin/Sections/Dashboard';
 import Clientes from '../components/Admin/Sections/Clientes';
 import Espacios from '../components/Admin/Sections/Espacios';
 import Servicios from '../components/Admin/Sections/Servicios';

@@ -8,15 +8,25 @@ function Pagos() {
     const [filterStatus, setFilterStatus] = useState('todos');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPago, setSelectedPago] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [stats, setStats] = useState({
+        totalIngresos: 0,
+        totalTransacciones: 0,
+        pagosHoy: 0,
+        pagosPendientes: 0
+    });
     const [formData, setFormData] = useState({
         reservaId: '',
         monto: '',
         metodoPago: '',
         fechaPago: '',
-        tipoPago: 'anticipo',
+        tipoPago: 'abono',
         comprobante: '',
         observaciones: ''
     });
+
+    const API_BASE_URL = 'http://localhost:3001';
 
     const metodosPago = [
         'Efectivo',
@@ -44,131 +54,155 @@ function Pagos() {
     useEffect(() => {
         loadPagos();
         loadReservas();
+        loadEstadisticas();
     }, []);
 
     const loadPagos = async () => {
+        setLoading(true);
+        setError('');
         try {
+            const response = await fetch(`${API_BASE_URL}/api/pagos`);
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            setPagos(data);
+            console.log('Pagos cargados desde la BD:', data);
+        } catch (error) {
+            console.error('Error cargando pagos:', error);
+            setError('Error al cargar los pagos. Verifique la conexión con el servidor.');
+
+            // Fallback a datos mock en caso de error
             const mockData = [
                 {
                     id: 1,
                     reservaId: 1,
-                    clienteNombre: 'María González',
-                    espacioNombre: 'Salón Principal',
+                    clienteNombre: 'Cliente de Prueba',
+                    espacioNombre: 'Espacio de Prueba',
                     fechaEvento: '2025-06-20',
-                    monto: 480000,
+                    monto: 100000,
                     metodoPago: 'Transferencia Bancaria',
                     fechaPago: '2025-05-15',
-                    tipoPago: 'anticipo',
+                    tipoPago: 'abono',
                     estado: 'confirmado',
-                    comprobante: 'TRF-001-2025',
-                    observaciones: 'Anticipo del 50% confirmado',
-                    costoTotal: 960000,
-                    montoPagado: 480000,
-                    saldoPendiente: 480000
-                },
-                {
-                    id: 2,
-                    reservaId: 2,
-                    clienteNombre: 'Carlos Pérez',
-                    espacioNombre: 'Salón VIP',
-                    fechaEvento: '2025-07-05',
-                    monto: 300000,
-                    metodoPago: 'Efectivo',
-                    fechaPago: '2025-06-01',
-                    tipoPago: 'anticipo',
-                    estado: 'confirmado',
-                    comprobante: 'REC-002-2025',
-                    observaciones: 'Anticipo en efectivo',
-                    costoTotal: 1120000,
-                    montoPagado: 300000,
-                    saldoPendiente: 820000
-                },
-                {
-                    id: 3,
-                    reservaId: 3,
-                    clienteNombre: 'Ana López',
-                    espacioNombre: 'Sala de Reuniones',
-                    fechaEvento: '2025-06-15',
-                    monto: 330000,
-                    metodoPago: 'Tarjeta de Crédito',
-                    fechaPago: '2025-05-20',
-                    tipoPago: 'pago_total',
-                    estado: 'confirmado',
-                    comprobante: 'TC-003-2025',
-                    observaciones: 'Pago completo por adelantado',
-                    costoTotal: 330000,
-                    montoPagado: 330000,
-                    saldoPendiente: 0
-                },
-                {
-                    id: 4,
-                    reservaId: 1,
-                    clienteNombre: 'María González',
-                    espacioNombre: 'Salón Principal',
-                    fechaEvento: '2025-06-20',
-                    monto: 480000,
-                    metodoPago: 'Transferencia Bancaria',
-                    fechaPago: '2025-06-18',
-                    tipoPago: 'saldo_final',
-                    estado: 'pendiente',
-                    comprobante: '',
-                    observaciones: 'Saldo final pendiente para día del evento',
-                    costoTotal: 960000,
-                    montoPagado: 480000,
-                    saldoPendiente: 480000
+                    comprobante: 'PAG-001-2025',
+                    observaciones: 'Datos de prueba - sin conexión a BD',
+                    costoTotal: 200000,
+                    montoPagado: 100000,
+                    saldoPendiente: 100000
                 }
             ];
             setPagos(mockData);
-        } catch (error) {
-            console.error('Error cargando pagos:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
     const loadReservas = async () => {
         try {
+            const response = await fetch(`${API_BASE_URL}/api/reservas-para-pagos`);
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            setReservas(data);
+            console.log('Reservas cargadas desde la BD:', data);
+        } catch (error) {
+            console.error('Error cargando reservas:', error);
+
+            // Fallback a datos mock
             const mockReservas = [
                 {
                     id: 1,
-                    clienteNombre: 'María González',
-                    espacioNombre: 'Salón Principal',
+                    clienteNombre: 'Cliente de Prueba',
+                    espacioNombre: 'Espacio de Prueba',
                     fechaEvento: '2025-06-20',
-                    costoTotal: 960000,
-                    saldoPendiente: 480000
-                },
-                {
-                    id: 2,
-                    clienteNombre: 'Carlos Pérez',
-                    espacioNombre: 'Salón VIP',
-                    fechaEvento: '2025-07-05',
-                    costoTotal: 1120000,
-                    saldoPendiente: 820000
+                    costoTotal: 200000,
+                    saldoPendiente: 100000
                 }
             ];
             setReservas(mockReservas);
+        }
+    };
+
+    const loadEstadisticas = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/pagos/estadisticas`);
+
+            if (!response.ok) {
+                throw new Error(`Error ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            setStats(data);
+            console.log('Estadísticas cargadas desde la BD:', data);
         } catch (error) {
-            console.error('Error cargando reservas:', error);
+            console.error('Error cargando estadísticas:', error);
+
+            // Mantener estadísticas por defecto
+            setStats({
+                totalIngresos: 0,
+                totalTransacciones: 0,
+                pagosHoy: 0,
+                pagosPendientes: 0
+            });
         }
     };
 
     const handleInputChange = (e) => {
+        const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [e.target.name]: value
         });
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError('');
+
         try {
-            if (selectedPago) {
-                console.log('Actualizando pago:', formData);
-            } else {
-                console.log('Registrando nuevo pago:', formData);
+            const url = selectedPago
+                ? `${API_BASE_URL}/api/pagos/${selectedPago.id}`
+                : `${API_BASE_URL}/api/pagos`;
+
+            const method = selectedPago ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    reservaId: formData.reservaId,
+                    monto: parseFloat(formData.monto),
+                    fechaPago: formData.fechaPago
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al guardar pago');
             }
+
+            const result = await response.json();
+            console.log(selectedPago ? 'Pago actualizado:' : 'Pago creado:', result);
+
             closeModal();
-            loadPagos();
+            await loadPagos(); // Recargar la lista
+            await loadReservas(); // Recargar reservas
+            await loadEstadisticas(); // Recargar estadísticas
+
         } catch (error) {
             console.error('Error al guardar pago:', error);
+            setError(error.message || 'Error al guardar el pago');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -196,53 +230,91 @@ function Pagos() {
                 observaciones: ''
             });
         }
+        setError('');
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedPago(null);
+        setError('');
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('¿Está seguro de que desea eliminar este pago?')) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/pagos/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al eliminar pago');
+            }
+
+            console.log('Pago eliminado:', id);
+            await loadPagos();
+            await loadReservas();
+            await loadEstadisticas();
+
+        } catch (error) {
+            console.error('Error al eliminar pago:', error);
+            setError(error.message || 'Error al eliminar el pago');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const confirmarPago = async (id) => {
         try {
             console.log('Confirmando pago:', id);
-            loadPagos();
+            // Esta funcionalidad requiere agregar estado a la tabla pago
+            alert('Funcionalidad de confirmación requiere agregar campo "estado" a la tabla pago en la BD');
         } catch (error) {
             console.error('Error al confirmar pago:', error);
         }
     };
 
-    const calcularEstadisticas = () => {
-        const totalIngresos = pagos
-            .filter(p => p.estado === 'confirmado')
-            .reduce((sum, p) => sum + p.monto, 0);
-
-        const pagosPendientes = pagos
-            .filter(p => p.estado === 'pendiente')
-            .reduce((sum, p) => sum + p.monto, 0);
-
-        const pagosHoy = pagos
-            .filter(p => p.fechaPago === new Date().toISOString().split('T')[0])
-            .reduce((sum, p) => sum + p.monto, 0);
-
-        return { totalIngresos, pagosPendientes, pagosHoy };
-    };
-
-    const stats = calcularEstadisticas();
-
     const filteredPagos = pagos.filter(pago => {
         const matchesSearch = pago.clienteNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
             pago.espacioNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            pago.comprobante.toLowerCase().includes(searchTerm.toLowerCase());
+            (pago.comprobante && pago.comprobante.toLowerCase().includes(searchTerm.toLowerCase()));
 
         const matchesStatus = filterStatus === 'todos' || pago.estado === filterStatus;
 
         return matchesSearch && matchesStatus;
     });
 
+    if (loading && pagos.length === 0) {
+        return (
+            <div className="section-container">
+                <div className="loading-message">
+                    <h2>Cargando pagos...</h2>
+                    <p>Conectando con la base de datos...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="section-container">
+            {error && (
+                <div className="error-message" style={{
+                    backgroundColor: '#ffebee',
+                    color: '#c62828',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    marginBottom: '20px',
+                    border: '1px solid #ffcdd2'
+                }}>
+                    {error}
+                </div>
+            )}
+
             <div className="section-header">
                 <div className="header-content">
                     <h1>
@@ -251,7 +323,11 @@ function Pagos() {
                     </h1>
                     <p>Gestiona los pagos y abonos de las reservas</p>
                 </div>
-                <button className="btn-primary" onClick={() => openModal()}>
+                <button
+                    className="btn-primary"
+                    onClick={() => openModal()}
+                    disabled={loading}
+                >
                     <span>➕</span>
                     Registrar Pago
                 </button>
@@ -282,7 +358,7 @@ function Pagos() {
                 <div className="stat-item">
                     <span className="stat-icon">📊</span>
                     <div>
-                        <h3>{pagos.length}</h3>
+                        <h3>{stats.totalTransacciones}</h3>
                         <p>Total Transacciones</p>
                     </div>
                 </div>
@@ -360,12 +436,12 @@ function Pagos() {
                                     </td>
                                     <td>
                                         <span className="badge badge-info">
-                                            {tiposPago.find(t => t.value === pago.tipoPago)?.label}
+                                            {tiposPago.find(t => t.value === pago.tipoPago)?.label || 'Abono'}
                                         </span>
                                     </td>
                                     <td>
-                                        <span className={`badge badge-${estadosPago.find(e => e.value === pago.estado)?.color}`}>
-                                            {estadosPago.find(e => e.value === pago.estado)?.label}
+                                        <span className={`badge badge-${estadosPago.find(e => e.value === pago.estado)?.color || 'success'}`}>
+                                            {estadosPago.find(e => e.value === pago.estado)?.label || 'Confirmado'}
                                         </span>
                                     </td>
                                     <td>
@@ -376,12 +452,27 @@ function Pagos() {
                                     <td>
                                         <div className="action-buttons">
                                             <button className="btn-view">👁️</button>
-                                            <button className="btn-edit" onClick={() => openModal(pago)}>✏️</button>
+                                            <button
+                                                className="btn-edit"
+                                                onClick={() => openModal(pago)}
+                                                disabled={loading}
+                                            >
+                                                ✏️
+                                            </button>
+                                            <button
+                                                className="btn-secondary"
+                                                onClick={() => handleDelete(pago.id)}
+                                                disabled={loading}
+                                                style={{ backgroundColor: '#dc3545', color: 'white' }}
+                                            >
+                                                🗑️
+                                            </button>
                                             {pago.estado === 'pendiente' && (
                                                 <button
                                                     className="btn-edit"
                                                     onClick={() => confirmarPago(pago.id)}
                                                     title="Confirmar pago"
+                                                    disabled={loading}
                                                 >
                                                     ✅
                                                 </button>
@@ -393,6 +484,22 @@ function Pagos() {
                         </tbody>
                     </table>
                 </div>
+
+                {filteredPagos.length === 0 && !loading && (
+                    <div className="empty-state">
+                        <h3>No se encontraron pagos</h3>
+                        <p>
+                            {searchTerm
+                                ? 'No hay pagos que coincidan con la búsqueda.'
+                                : 'No hay pagos registrados en la base de datos.'}
+                        </p>
+                        {!searchTerm && (
+                            <button className="btn-primary" onClick={() => openModal()}>
+                                Registrar primer pago
+                            </button>
+                        )}
+                    </div>
+                )}
             </div>
 
             {/* Modal */}
@@ -413,12 +520,14 @@ function Pagos() {
                                             value={formData.reservaId}
                                             onChange={handleInputChange}
                                             required
+                                            disabled={loading || selectedPago}
                                         >
                                             <option value="">Seleccionar reserva</option>
                                             {reservas.map(reserva => (
                                                 <option key={reserva.id} value={reserva.id}>
                                                     {reserva.clienteNombre} - {reserva.espacioNombre}
                                                     ({new Date(reserva.fechaEvento).toLocaleDateString()})
+                                                    - Saldo: ${reserva.saldoPendiente.toLocaleString()}
                                                 </option>
                                             ))}
                                         </select>
@@ -430,6 +539,7 @@ function Pagos() {
                                             value={formData.tipoPago}
                                             onChange={handleInputChange}
                                             required
+                                            disabled={loading}
                                         >
                                             {tiposPago.map(tipo => (
                                                 <option key={tipo.value} value={tipo.value}>
@@ -449,6 +559,7 @@ function Pagos() {
                                             onChange={handleInputChange}
                                             required
                                             min="1"
+                                            disabled={loading}
                                         />
                                     </div>
                                     <div className="form-group">
@@ -457,7 +568,7 @@ function Pagos() {
                                             name="metodoPago"
                                             value={formData.metodoPago}
                                             onChange={handleInputChange}
-                                            required
+                                            disabled={loading}
                                         >
                                             <option value="">Seleccionar método</option>
                                             {metodosPago.map(metodo => (
@@ -477,6 +588,7 @@ function Pagos() {
                                             value={formData.fechaPago}
                                             onChange={handleInputChange}
                                             required
+                                            disabled={loading}
                                         />
                                     </div>
                                     <div className="form-group">
@@ -487,6 +599,7 @@ function Pagos() {
                                             value={formData.comprobante}
                                             onChange={handleInputChange}
                                             placeholder="Ej: TRF-001-2025"
+                                            disabled={loading}
                                         />
                                     </div>
                                 </div>
@@ -498,15 +611,25 @@ function Pagos() {
                                         onChange={handleInputChange}
                                         rows="3"
                                         placeholder="Información adicional sobre el pago..."
+                                        disabled={loading}
                                     />
                                 </div>
                             </div>
                             <div className="modal-footer">
-                                <button type="button" className="btn-secondary" onClick={closeModal}>
+                                <button
+                                    type="button"
+                                    className="btn-secondary"
+                                    onClick={closeModal}
+                                    disabled={loading}
+                                >
                                     Cancelar
                                 </button>
-                                <button type="submit" className="btn-primary">
-                                    {selectedPago ? 'Actualizar' : 'Registrar'} Pago
+                                <button
+                                    type="submit"
+                                    className="btn-primary"
+                                    disabled={loading}
+                                >
+                                    {loading ? 'Guardando...' : (selectedPago ? 'Actualizar' : 'Registrar')} Pago
                                 </button>
                             </div>
                         </form>
