@@ -118,26 +118,35 @@ app.get('/espacios', (req, res) => {
 app.get('/dashboard/stats', (req, res) => {
     console.log('Endpoint /dashboard/stats llamado');
 
-    // Query para obtener todas las estadísticas necesarias
     const statsQuery = `
         SELECT 
             (SELECT COUNT(*) FROM cliente) as totalClientes,
             (SELECT COUNT(*) FROM reserva) as totalReservas,
             (SELECT COUNT(*) FROM reserva WHERE DATE(fecha_reserva) = CURDATE()) as reservasHoy,
-            (SELECT COALESCE(SUM(p.monto_total), 0) FROM pago p 
+            (SELECT COALESCE(SUM(p.abono), 0) FROM pago p 
              WHERE MONTH(p.fecha_pago) = MONTH(CURDATE()) 
              AND YEAR(p.fecha_pago) = YEAR(CURDATE())) as ingresosMes
     `;
 
     connection.query(statsQuery, (err, results) => {
         if (err) {
-            console.error('Error al obtener estadísticas:', err);
-            return res.status(500).json({ error: 'Error al obtener estadísticas' });
+            console.error('Error en consulta de estadísticas:', err);
+            res.status(500).json({
+                error: 'Error al obtener estadísticas',
+                details: err.message
+            });
+            return;
         }
 
-        const stats = results[0];
+        const stats = results[0] || {
+            totalClientes: 0,
+            totalReservas: 0,
+            reservasHoy: 0,
+            ingresosMes: 0
+        };
+
         console.log('Estadísticas obtenidas:', stats);
-        res.status(200).json(stats);
+        res.json(stats);
     });
 });
 
@@ -150,26 +159,29 @@ app.get('/dashboard/reservas-recientes', (req, res) => {
             r.id,
             r.fecha_reserva,
             r.estado,
-            r.cantidad_personas,
             r.razon,
             c.nombre as cliente_nombre,
             e.nombre as espacio_nombre
         FROM reserva r
         JOIN cliente c ON r.cliente_id = c.id
         JOIN espacio e ON r.espacio_id = e.id
-        WHERE r.fecha_reserva >= CURDATE()
+        WHERE r.fecha_reserva >= NOW()
         ORDER BY r.fecha_reserva ASC
         LIMIT 5
     `;
 
     connection.query(reservasQuery, (err, results) => {
         if (err) {
-            console.error('Error al obtener reservas recientes:', err);
-            return res.status(500).json({ error: 'Error al obtener reservas recientes' });
+            console.error('Error en consulta de reservas recientes:', err);
+            res.status(500).json({
+                error: 'Error al obtener reservas recientes',
+                details: err.message
+            });
+            return;
         }
 
         console.log('Reservas recientes obtenidas:', results.length);
-        res.status(200).json(results);
+        res.json(results);
     });
 });
 
@@ -179,28 +191,50 @@ app.get('/dashboard/resumen-financiero', (req, res) => {
 
     const financieroQuery = `
         SELECT 
-            (SELECT COALESCE(SUM(p.monto_total), 0) FROM pago p 
+            (SELECT COALESCE(SUM(p.abono), 0) FROM pago p 
              WHERE MONTH(p.fecha_pago) = MONTH(CURDATE()) 
              AND YEAR(p.fecha_pago) = YEAR(CURDATE())) as ingresosMes,
-            (SELECT COALESCE(SUM(e.costo_base), 0) FROM reserva r
+            (SELECT COALESCE(SUM(
+                (e.costo_base + COALESCE(servicios_total.costo_servicios, 0)) - COALESCE(pagos_total.total_pagado, 0)
+            ), 0) FROM reserva r
              JOIN espacio e ON r.espacio_id = e.id
-             WHERE r.estado = 'confirmada'
-             AND NOT EXISTS (SELECT 1 FROM pago p WHERE p.reserva_id = r.id)) as pagosPendientes,
-            (SELECT COALESCE(AVG(p.monto_total), 0) * 
-             (SELECT COUNT(*) FROM reserva WHERE estado = 'confirmada' 
-              AND MONTH(fecha_reserva) = MONTH(CURDATE())
-              AND YEAR(fecha_reserva) = YEAR(CURDATE()))) as proyeccionMensual
+             LEFT JOIN (
+                 SELECT rs.reserva_id, SUM(s.costo) as costo_servicios
+                 FROM reserva_servicio rs
+                 JOIN servicio s ON rs.servicio_id = s.id
+                 GROUP BY rs.reserva_id
+             ) servicios_total ON r.id = servicios_total.reserva_id
+             LEFT JOIN (
+                 SELECT reserva_id, SUM(abono) as total_pagado
+                 FROM pago
+                 GROUP BY reserva_id
+             ) pagos_total ON r.id = pagos_total.reserva_id
+             WHERE r.estado IN ('confirmada', 'pendiente')
+             AND ((e.costo_base + COALESCE(servicios_total.costo_servicios, 0)) - COALESCE(pagos_total.total_pagado, 0)) > 0) as pagosPendientes,
+            (SELECT COALESCE(
+                (SUM(p.abono) / NULLIF(COUNT(DISTINCT MONTH(p.fecha_pago)), 0)) * 12, 0
+            ) FROM pago p 
+             WHERE YEAR(p.fecha_pago) = YEAR(CURDATE())) as proyeccionMensual
     `;
 
     connection.query(financieroQuery, (err, results) => {
         if (err) {
-            console.error('Error al obtener resumen financiero:', err);
-            return res.status(500).json({ error: 'Error al obtener resumen financiero' });
+            console.error('Error en consulta financiera:', err);
+            res.status(500).json({
+                error: 'Error al obtener datos financieros',
+                details: err.message
+            });
+            return;
         }
 
-        const resumen = results[0];
-        console.log('Resumen financiero obtenido:', resumen);
-        res.status(200).json(resumen);
+        const data = results[0] || {
+            ingresosMes: 0,
+            pagosPendientes: 0,
+            proyeccionMensual: 0
+        };
+
+        console.log('Datos financieros obtenidos:', data);
+        res.json(data);
     });
 });
 
@@ -212,24 +246,509 @@ app.get('/dashboard/espacios-ranking', (req, res) => {
         SELECT 
             e.nombre,
             COUNT(r.id) as total_reservas,
-            ROUND((COUNT(r.id) * 100.0 / (SELECT COUNT(*) FROM reserva WHERE MONTH(fecha_reserva) = MONTH(CURDATE()) AND YEAR(fecha_reserva) = YEAR(CURDATE()))), 0) as porcentaje
+            CASE 
+                WHEN (SELECT COUNT(*) FROM reserva WHERE MONTH(fecha_reserva) = MONTH(CURDATE()) AND YEAR(fecha_reserva) = YEAR(CURDATE())) > 0
+                THEN ROUND((COUNT(r.id) * 100.0 / (SELECT COUNT(*) FROM reserva WHERE MONTH(fecha_reserva) = MONTH(CURDATE()) AND YEAR(fecha_reserva) = YEAR(CURDATE()))), 1)
+                ELSE 0
+            END as porcentaje
         FROM espacio e
         LEFT JOIN reserva r ON e.id = r.espacio_id 
             AND MONTH(r.fecha_reserva) = MONTH(CURDATE()) 
             AND YEAR(r.fecha_reserva) = YEAR(CURDATE())
         GROUP BY e.id, e.nombre
-        ORDER BY total_reservas DESC
-        LIMIT 3
+        ORDER BY total_reservas DESC, e.nombre ASC
+        LIMIT 5
     `;
 
     connection.query(rankingQuery, (err, results) => {
         if (err) {
-            console.error('Error al obtener ranking de espacios:', err);
-            return res.status(500).json({ error: 'Error al obtener ranking de espacios' });
+            console.error('Error en consulta de ranking:', err);
+            res.status(500).json({
+                error: 'Error al obtener ranking de espacios',
+                details: err.message
+            });
+            return;
         }
 
         console.log('Ranking de espacios obtenido:', results);
+        res.json(results);
+    });
+});
+// Endpoint para obtener resumen financiero
+app.get('/dashboard/resumen-financiero', (req, res) => {
+    console.log('Endpoint /dashboard/resumen-financiero llamado');
+
+    const financieroQuery = `
+        SELECT 
+            (SELECT COALESCE(SUM(p.abono), 0) FROM pago p 
+             WHERE MONTH(p.fecha_pago) = MONTH(CURDATE()) 
+             AND YEAR(p.fecha_pago) = YEAR(CURDATE())) as ingresosMes,
+            (SELECT COALESCE(SUM(
+                (e.costo_base + COALESCE(servicios_total.costo_servicios, 0)) - COALESCE(pagos_total.total_pagado, 0)
+            ), 0) FROM reserva r
+             JOIN espacio e ON r.espacio_id = e.id
+             LEFT JOIN (
+                 SELECT rs.reserva_id, SUM(s.costo) as costo_servicios
+                 FROM reserva_servicio rs
+                 JOIN servicio s ON rs.servicio_id = s.id
+                 GROUP BY rs.reserva_id
+             ) servicios_total ON r.id = servicios_total.reserva_id
+             LEFT JOIN (
+                 SELECT reserva_id, SUM(abono) as total_pagado
+                 FROM pago
+                 GROUP BY reserva_id
+             ) pagos_total ON r.id = pagos_total.reserva_id
+             WHERE r.estado IN ('confirmada', 'pendiente')
+             AND ((e.costo_base + COALESCE(servicios_total.costo_servicios, 0)) - COALESCE(pagos_total.total_pagado, 0)) > 0) as pagosPendientes,
+            (SELECT COALESCE(
+                (SUM(p.abono) / NULLIF(COUNT(DISTINCT MONTH(p.fecha_pago)), 0)) * 12, 0
+            ) FROM pago p 
+             WHERE YEAR(p.fecha_pago) = YEAR(CURDATE())) as proyeccionMensual
+    `;
+
+    connection.query(financieroQuery, (err, results) => {
+        if (err) {
+            console.error('Error en consulta financiera:', err);
+            res.status(500).json({
+                error: 'Error al obtener datos financieros',
+                details: err.message
+            });
+            return;
+        }
+
+        const data = results[0] || {
+            ingresosMes: 0,
+            pagosPendientes: 0,
+            proyeccionMensual: 0
+        };
+
+        console.log('Datos financieros obtenidos:', data);
+        res.json(data);
+    });
+});
+
+// Endpoint para obtener espacios más utilizados
+app.get('/dashboard/espacios-ranking', (req, res) => {
+    console.log('Endpoint /dashboard/espacios-ranking llamado');
+
+    const rankingQuery = `
+        SELECT 
+            e.nombre,
+            COUNT(r.id) as total_reservas,
+            CASE 
+                WHEN (SELECT COUNT(*) FROM reserva WHERE MONTH(fecha_reserva) = MONTH(CURDATE()) AND YEAR(fecha_reserva) = YEAR(CURDATE())) > 0
+                THEN ROUND((COUNT(r.id) * 100.0 / (SELECT COUNT(*) FROM reserva WHERE MONTH(fecha_reserva) = MONTH(CURDATE()) AND YEAR(fecha_reserva) = YEAR(CURDATE()))), 1)
+                ELSE 0
+            END as porcentaje
+        FROM espacio e
+        LEFT JOIN reserva r ON e.id = r.espacio_id 
+            AND MONTH(r.fecha_reserva) = MONTH(CURDATE()) 
+            AND YEAR(r.fecha_reserva) = YEAR(CURDATE())
+        GROUP BY e.id, e.nombre
+        ORDER BY total_reservas DESC, e.nombre ASC
+        LIMIT 5
+    `;
+
+    connection.query(rankingQuery, (err, results) => {
+        if (err) {
+            console.error('Error en consulta de ranking:', err);
+            res.status(500).json({
+                error: 'Error al obtener ranking de espacios',
+                details: err.message
+            });
+            return;
+        }
+
+        console.log('Ranking de espacios obtenido:', results);
+        res.json(results);
+    });
+});
+// Endpoint específico para obtener clientes (usado por el dashboard)
+app.get('/api/clientes', (req, res) => {
+    console.log('Endpoint /api/clientes llamado desde dashboard');
+
+    const query = `
+        SELECT 
+            id,
+            nombre,
+            rut,
+            correo,
+            telefono,
+            fecha_creacion
+        FROM cliente
+        ORDER BY nombre
+    `;
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error('Error al obtener clientes para dashboard:', err);
+            return res.status(500).json({ error: 'Error al obtener clientes' });
+        }
+
+        console.log('Clientes para dashboard obtenidos:', results.length);
         res.status(200).json(results);
+    });
+});
+
+// Endpoint para crear cliente desde dashboard
+app.post('/api/clientes', (req, res) => {
+    console.log('Endpoint POST /api/clientes llamado desde dashboard');
+    console.log('Datos recibidos:', req.body);
+
+    const { nombre, rut, correo, telefono } = req.body;
+
+    if (!nombre || !rut) {
+        return res.status(400).json({
+            message: 'Nombre y RUT son requeridos'
+        });
+    }
+
+    // Verificar si el cliente ya existe por RUT
+    const checkQuery = 'SELECT id FROM cliente WHERE rut = ?';
+
+    connection.query(checkQuery, [rut], (err, results) => {
+        if (err) {
+            console.error('Error al verificar cliente:', err);
+            return res.status(500).json({
+                message: 'Error al verificar cliente'
+            });
+        }
+
+        if (results.length > 0) {
+            return res.status(409).json({
+                message: 'Ya existe un cliente con ese RUT'
+            });
+        }
+
+        // Insertar nuevo cliente
+        const insertQuery = 'INSERT INTO cliente (nombre, rut, correo, telefono) VALUES (?, ?, ?, ?)';
+
+        connection.query(insertQuery, [nombre, rut, correo || '', telefono || ''], (err, result) => {
+            if (err) {
+                console.error('Error al crear cliente:', err);
+                return res.status(500).json({
+                    message: 'Error al crear cliente'
+                });
+            }
+
+            console.log('Cliente creado desde dashboard con ID:', result.insertId);
+            res.status(201).json({
+                message: 'Cliente creado correctamente',
+                id: result.insertId,
+                cliente: {
+                    id: result.insertId,
+                    nombre,
+                    rut,
+                    correo: correo || '',
+                    telefono: telefono || ''
+                }
+            });
+        });
+    });
+});
+
+// Endpoint específico para crear reserva desde dashboard
+app.post('/crearReserva', (req, res) => {
+    console.log('Endpoint POST /crearReserva llamado desde dashboard');
+    console.log('Datos recibidos:', req.body);
+
+    const { clienteId, espacioId, fecha, horario, personas, razon, servicios } = req.body;
+
+    if (!clienteId || !espacioId || !fecha || !horario || !personas || !razon) {
+        return res.status(400).json({
+            error: 'Todos los campos son obligatorios: clienteId, espacioId, fecha, horario, personas, razon'
+        });
+    }
+
+    // Verificar que el cliente existe
+    connection.query('SELECT id, nombre FROM cliente WHERE id = ?', [clienteId], (err, clienteResults) => {
+        if (err) {
+            console.error('Error verificando cliente:', err);
+            return res.status(500).json({
+                error: 'Error al verificar cliente'
+            });
+        }
+
+        if (clienteResults.length === 0) {
+            return res.status(404).json({
+                error: 'Cliente no encontrado'
+            });
+        }
+
+        // Verificar que el espacio existe y está disponible
+        connection.query('SELECT id, nombre, disponible FROM espacio WHERE id = ?', [espacioId], (err, espacioResults) => {
+            if (err) {
+                console.error('Error verificando espacio:', err);
+                return res.status(500).json({
+                    error: 'Error al verificar espacio'
+                });
+            }
+
+            if (espacioResults.length === 0) {
+                return res.status(404).json({
+                    error: 'Espacio no encontrado'
+                });
+            }
+
+            if (!espacioResults[0].disponible) {
+                return res.status(400).json({
+                    error: 'El espacio seleccionado no está disponible'
+                });
+            }
+
+            // Verificar disponibilidad en la fecha seleccionada
+            const fechaReserva = `${fecha} ${horario}:00`;
+            const checkDisponibilidadQuery = `
+                SELECT id FROM reserva 
+                WHERE espacio_id = ? 
+                AND DATE(fecha_reserva) = ? 
+                AND estado IN ('pendiente', 'confirmada')
+            `;
+
+            connection.query(checkDisponibilidadQuery, [espacioId, fecha], (err, conflictos) => {
+                if (err) {
+                    console.error('Error verificando disponibilidad:', err);
+                    return res.status(500).json({
+                        error: 'Error al verificar disponibilidad'
+                    });
+                }
+
+                if (conflictos.length > 0) {
+                    return res.status(409).json({
+                        error: 'El espacio ya está reservado para esa fecha'
+                    });
+                }
+
+                // Crear la reserva
+                const reservaQuery = `
+                    INSERT INTO reserva (fecha_reserva, estado, cantidad_personas, razon, cliente_id, espacio_id) 
+                    VALUES (?, 'pendiente', ?, ?, ?, ?)
+                `;
+
+                connection.query(reservaQuery, [fechaReserva, personas, razon, clienteId, espacioId], (err, reservaResult) => {
+                    if (err) {
+                        console.error('Error creando reserva:', err);
+                        return res.status(500).json({
+                            error: 'Error al crear la reserva'
+                        });
+                    }
+
+                    const reservaId = reservaResult.insertId;
+                    console.log('Reserva creada desde dashboard con ID:', reservaId);
+
+                    // Agregar servicios si se seleccionaron
+                    if (servicios && servicios.length > 0) {
+                        const serviciosValues = servicios.map(servicioId => [reservaId, servicioId]);
+                        const insertServiciosQuery = 'INSERT INTO reserva_servicio (reserva_id, servicio_id) VALUES ?';
+
+                        connection.query(insertServiciosQuery, [serviciosValues], (err) => {
+                            if (err) {
+                                console.error('Error agregando servicios:', err);
+                                // La reserva ya se creó, solo falló agregar servicios
+                                return res.status(201).json({
+                                    message: 'Reserva creada correctamente, pero algunos servicios no pudieron agregarse',
+                                    reservaId: reservaId,
+                                    warning: 'Algunos servicios no se agregaron'
+                                });
+                            }
+
+                            console.log(`${servicios.length} servicios agregados a la reserva ${reservaId}`);
+                            res.status(201).json({
+                                message: 'Reserva creada correctamente con servicios',
+                                reservaId: reservaId,
+                                clienteNombre: clienteResults[0].nombre,
+                                espacioNombre: espacioResults[0].nombre,
+                                serviciosAgregados: servicios.length
+                            });
+                        });
+                    } else {
+                        // Sin servicios
+                        res.status(201).json({
+                            message: 'Reserva creada correctamente',
+                            reservaId: reservaId,
+                            clienteNombre: clienteResults[0].nombre,
+                            espacioNombre: espacioResults[0].nombre
+                        });
+                    }
+                });
+            });
+        });
+    });
+});
+
+// Endpoint específico para obtener reservas para pagos (dashboard)
+app.get('/api/reservas', (req, res) => {
+    console.log('Endpoint /api/reservas llamado desde dashboard para pagos');
+
+    const query = `
+        SELECT 
+            r.id,
+            r.fecha_reserva,
+            r.estado,
+            r.cantidad_personas,
+            r.razon,
+            c.nombre as cliente_nombre,
+            c.rut as cliente_rut,
+            e.nombre as espacio_nombre,
+            e.costo_base,
+            COALESCE(SUM(s.costo), 0) as costo_servicios,
+            COALESCE(pagos.total_pagado, 0) as total_pagado
+        FROM reserva r
+        JOIN cliente c ON r.cliente_id = c.id
+        JOIN espacio e ON r.espacio_id = e.id
+        LEFT JOIN reserva_servicio rs ON r.id = rs.reserva_id
+        LEFT JOIN servicio s ON rs.servicio_id = s.id
+        LEFT JOIN (
+            SELECT reserva_id, SUM(abono) as total_pagado
+            FROM pago
+            GROUP BY reserva_id
+        ) pagos ON r.id = pagos.reserva_id
+        WHERE r.estado IN ('pendiente', 'confirmada')
+        GROUP BY r.id, r.fecha_reserva, r.estado, r.cantidad_personas, r.razon,
+                 c.nombre, c.rut, e.nombre, e.costo_base, pagos.total_pagado
+        ORDER BY r.fecha_reserva ASC
+    `;
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error('Error al obtener reservas para pagos:', err);
+            return res.status(500).json({ error: 'Error al obtener reservas' });
+        }
+
+        const reservasFormatted = results.map(reserva => {
+            const costoTotal = parseFloat(reserva.costo_base) + parseFloat(reserva.costo_servicios);
+            const totalPagado = parseFloat(reserva.total_pagado);
+            const saldoPendiente = costoTotal - totalPagado;
+
+            return {
+                id: reserva.id,
+                fecha_reserva: reserva.fecha_reserva,
+                cliente_nombre: reserva.cliente_nombre,
+                cliente_rut: reserva.cliente_rut,
+                espacio_nombre: reserva.espacio_nombre,
+                razon: reserva.razon,
+                cantidad_personas: reserva.cantidad_personas,
+                estado: reserva.estado,
+                costoTotal: costoTotal,
+                totalPagado: totalPagado,
+                saldoPendiente: Math.max(0, saldoPendiente)
+            };
+        });
+
+        console.log('Reservas para pagos obtenidas desde dashboard:', reservasFormatted.length);
+        res.status(200).json(reservasFormatted);
+    });
+});
+
+// Endpoint específico para crear pago desde dashboard
+app.post('/api/pagos', (req, res) => {
+    console.log('Endpoint POST /api/pagos llamado desde dashboard');
+    console.log('Datos recibidos:', req.body);
+
+    const { reservaId, monto, metodoPago, fechaPago, observaciones } = req.body;
+
+    if (!reservaId || !monto || !fechaPago) {
+        return res.status(400).json({
+            message: 'Los campos reservaId, monto y fechaPago son obligatorios'
+        });
+    }
+
+    // Verificar que la reserva existe y obtener información del costo
+    const checkReservaQuery = `
+        SELECT 
+            r.id,
+            r.estado,
+            c.nombre as cliente_nombre,
+            e.nombre as espacio_nombre,
+            e.costo_base,
+            COALESCE(SUM(s.costo), 0) as costo_servicios,
+            COALESCE(pagos.total_pagado, 0) as total_pagado
+        FROM reserva r
+        JOIN cliente c ON r.cliente_id = c.id
+        JOIN espacio e ON r.espacio_id = e.id
+        LEFT JOIN reserva_servicio rs ON r.id = rs.reserva_id
+        LEFT JOIN servicio s ON rs.servicio_id = s.id
+        LEFT JOIN (
+            SELECT reserva_id, SUM(abono) as total_pagado
+            FROM pago
+            GROUP BY reserva_id
+        ) pagos ON r.id = pagos.reserva_id
+        WHERE r.id = ?
+        GROUP BY r.id, r.estado, c.nombre, e.nombre, e.costo_base, pagos.total_pagado
+    `;
+
+    connection.query(checkReservaQuery, [reservaId], (err, reservaResults) => {
+        if (err) {
+            console.error('Error verificando reserva para pago:', err);
+            return res.status(500).json({
+                message: 'Error al verificar reserva'
+            });
+        }
+
+        if (reservaResults.length === 0) {
+            return res.status(404).json({
+                message: 'Reserva no encontrada'
+            });
+        }
+
+        const reserva = reservaResults[0];
+        const costoTotal = parseFloat(reserva.costo_base) + parseFloat(reserva.costo_servicios);
+        const totalPagado = parseFloat(reserva.total_pagado);
+        const saldoPendiente = costoTotal - totalPagado;
+
+        // Validar que el monto no exceda el saldo pendiente
+        if (parseFloat(monto) > saldoPendiente) {
+            return res.status(400).json({
+                message: `El monto no puede exceder el saldo pendiente ($${saldoPendiente.toLocaleString()})`
+            });
+        }
+
+        // Crear el pago
+        const insertPagoQuery = `
+            INSERT INTO pago (monto_total, abono, fecha_pago, reserva_id) 
+            VALUES (?, ?, ?, ?)
+        `;
+
+        connection.query(insertPagoQuery, [costoTotal, monto, fechaPago, reservaId], (err, result) => {
+            if (err) {
+                console.error('Error creando pago:', err);
+                return res.status(500).json({
+                    message: 'Error al registrar pago'
+                });
+            }
+
+            const pagoId = result.insertId;
+            const nuevoTotalPagado = totalPagado + parseFloat(monto);
+            const nuevoSaldoPendiente = costoTotal - nuevoTotalPagado;
+
+            console.log('Pago creado desde dashboard con ID:', pagoId);
+
+            // Si el pago completa la reserva, actualizar estado
+            if (nuevoSaldoPendiente <= 0) {
+                connection.query(
+                    'UPDATE reserva SET estado = "confirmada" WHERE id = ? AND estado = "pendiente"',
+                    [reservaId],
+                    (err) => {
+                        if (err) {
+                            console.error('Error actualizando estado de reserva:', err);
+                        } else {
+                            console.log('Reserva marcada como confirmada por pago completo');
+                        }
+                    }
+                );
+            }
+
+            res.status(201).json({
+                message: 'Pago registrado correctamente',
+                pagoId: pagoId,
+                reservaId: reservaId,
+                clienteNombre: reserva.cliente_nombre,
+                espacioNombre: reserva.espacio_nombre,
+                montoPagado: parseFloat(monto),
+                nuevoSaldoPendiente: Math.max(0, nuevoSaldoPendiente),
+                estadoReserva: nuevoSaldoPendiente <= 0 ? 'confirmada' : reserva.estado
+            });
+        });
     });
 });
 // ===== ENDPOINTS PARA CLIENTES =====
@@ -1299,12 +1818,12 @@ app.get('/api/reservas', (req, res) => {
             return {
                 id: reserva.id,
                 clienteId: reserva.cliente_id,
-                clienteNombre: reserva.cliente_nombre,
+                clienteNombre: reserva.cliente_nombre, // CAMPO CORREGIDO
                 espacioId: reserva.espacio_id,
-                espacioNombre: reserva.espacio_nombre,
+                espacioNombre: reserva.espacio_nombre, // CAMPO CORREGIDO
                 fechaEvento: fechaReserva.toISOString().split('T')[0],
                 horaInicio: fechaReserva.toTimeString().substring(0, 5),
-                horaFin: new Date(fechaReserva.getTime() + 4 * 60 * 60 * 1000).toTimeString().substring(0, 5), // +4 horas por defecto
+                horaFin: new Date(fechaReserva.getTime() + 4 * 60 * 60 * 1000).toTimeString().substring(0, 5),
                 tipoEvento: reserva.razon,
                 numeroPersonas: reserva.cantidad_personas,
                 serviciosSeleccionados: serviciosSeleccionados,
@@ -1314,7 +1833,7 @@ app.get('/api/reservas', (req, res) => {
                 observaciones: `Cliente: ${reserva.cliente_nombre} (${reserva.cliente_rut})`,
                 costoEspacio: costoEspacio,
                 costoServicios: costoServicios,
-                descuento: 0, // No existe en BD, valor por defecto
+                descuento: 0,
                 costoTotal: costoTotal,
                 anticipo: totalPagado,
                 saldoPendiente: Math.max(0, saldoPendiente)
@@ -1979,163 +2498,153 @@ app.post('/crearEspacio', (req, res) => {
 
 // Endpoint para crear reservas según la estructura de las tablas cliente y reserva
 app.post('/crearReserva', (req, res) => {
-    const { nombre, rut, correo, contacto, fecha, horario, personas, razon, espacioId } = req.body;
+    const { nombre, rut, correo, contacto, fecha, horario, personas, razon, espacioId, servicios } = req.body;
 
-    // Validar campos obligatorios
-    if (!nombre || !rut || !correo || !contacto || !fecha || !horario || !personas || !razon) {
-        return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    if (!nombre || !rut || !fecha || !personas || !razon || !espacioId) {
+        return res.status(400).json({
+            error: 'Faltan campos obligatorios: nombre, rut, fecha, personas, razon y espacioId son requeridos'
+        });
     }
 
-    // Usar el espacioId proporcionado o el valor por defecto
-    const espacioIdFinal = espacioId || 1;
-
-    // Verificar primero si el cliente ya existe por RUT
-    const checkClienteQuery = 'SELECT id FROM cliente WHERE rut = ?';
-
-    connection.query(checkClienteQuery, [rut], (err, clienteResults) => {
+    // Verificar si el cliente ya existe
+    connection.query('SELECT id FROM cliente WHERE rut = ?', [rut], (err, clienteResults) => {
         if (err) {
-            console.error('Error al verificar cliente:', err);
+            console.error('Error verificando cliente:', err);
             return res.status(500).json({
-                error: 'Error al verificar si el cliente existe',
+                error: 'Error al verificar cliente',
                 details: err.message
             });
         }
 
         let clienteId;
 
-        // Si el cliente ya existe, usamos su ID
-        if (clienteResults.length > 0) {
-            clienteId = clienteResults[0].id;
-            procederConReserva(clienteId);
-        }
-        // Si no existe, creamos un nuevo cliente
-        else {
-            const insertClienteQuery = 'INSERT INTO cliente (nombre, rut, correo, telefono) VALUES (?, ?, ?, ?)';
-
-            connection.query(insertClienteQuery, [nombre, rut, correo, contacto], (err, clienteResult) => {
+        const crearReservaFinal = (clienteId) => {
+            // Verificar que el espacio existe
+            connection.query('SELECT id FROM espacio WHERE id = ?', [espacioId], (err, espacioResults) => {
                 if (err) {
-                    console.error('Error al crear cliente:', err);
+                    console.error('Error verificando espacio:', err);
                     return res.status(500).json({
-                        error: 'Error al crear el cliente',
+                        error: 'Error al verificar espacio',
+                        details: err.message
+                    });
+                }
+
+                if (espacioResults.length === 0) {
+                    return res.status(400).json({
+                        error: `No existe un espacio con ID ${espacioId}`
+                    });
+                }
+
+                // Combinar fecha y horario para crear fecha_reserva
+                const fechaReserva = `${fecha} ${horario || '12:00'}:00`;
+
+                // Crear la reserva
+                const reservaQuery = `
+                    INSERT INTO reserva (fecha_reserva, estado, cantidad_personas, razon, cliente_id, espacio_id) 
+                    VALUES (?, 'pendiente', ?, ?, ?, ?)
+                `;
+
+                connection.query(reservaQuery, [fechaReserva, personas, razon, clienteId, espacioId], (err, reservaResult) => {
+                    if (err) {
+                        console.error('Error creando reserva:', err);
+                        return res.status(500).json({
+                            error: 'Error al crear la reserva',
+                            details: err.message
+                        });
+                    }
+
+                    const reservaId = reservaResult.insertId;
+                    console.log('Reserva creada con ID:', reservaId);
+
+                    // Si hay servicios seleccionados, agregarlos a la reserva
+                    if (servicios && servicios.length > 0) {
+                        const serviciosPromises = servicios.map(servicioId => {
+                            return new Promise((resolve, reject) => {
+                                // Verificar que el servicio existe
+                                connection.query('SELECT id FROM servicio WHERE id = ?', [servicioId], (err, servicioResults) => {
+                                    if (err) {
+                                        console.error('Error verificando servicio:', err);
+                                        reject(err);
+                                        return;
+                                    }
+
+                                    if (servicioResults.length === 0) {
+                                        console.warn(`Servicio con ID ${servicioId} no existe, se omite`);
+                                        resolve();
+                                        return;
+                                    }
+
+                                    // Insertar en reserva_servicio
+                                    connection.query(
+                                        'INSERT INTO reserva_servicio (reserva_id, servicio_id) VALUES (?, ?)',
+                                        [reservaId, servicioId],
+                                        (err, result) => {
+                                            if (err) {
+                                                console.error('Error agregando servicio a reserva:', err);
+                                                reject(err);
+                                            } else {
+                                                console.log(`Servicio ${servicioId} agregado a reserva ${reservaId}`);
+                                                resolve();
+                                            }
+                                        }
+                                    );
+                                });
+                            });
+                        });
+
+                        Promise.all(serviciosPromises)
+                            .then(() => {
+                                res.status(201).json({
+                                    message: 'Reserva creada correctamente con servicios',
+                                    reservaId: reservaId,
+                                    clienteId: clienteId,
+                                    serviciosAgregados: servicios.length
+                                });
+                            })
+                            .catch(error => {
+                                console.error('Error agregando servicios:', error);
+                                // La reserva ya fue creada, solo falló agregar algunos servicios
+                                res.status(201).json({
+                                    message: 'Reserva creada, pero algunos servicios no pudieron agregarse',
+                                    reservaId: reservaId,
+                                    clienteId: clienteId,
+                                    warning: 'Algunos servicios no se pudieron agregar'
+                                });
+                            });
+                    } else {
+                        // Sin servicios, respuesta normal
+                        res.status(201).json({
+                            message: 'Reserva creada correctamente',
+                            reservaId: reservaId,
+                            clienteId: clienteId
+                        });
+                    }
+                });
+            });
+        };
+
+        if (clienteResults.length > 0) {
+            // Cliente ya existe
+            clienteId = clienteResults[0].id;
+            console.log('Cliente existente encontrado:', clienteId);
+            crearReservaFinal(clienteId);
+        } else {
+            // Crear nuevo cliente
+            const clienteQuery = 'INSERT INTO cliente (nombre, rut, correo, telefono) VALUES (?, ?, ?, ?)';
+            connection.query(clienteQuery, [nombre, rut, correo, contacto], (err, clienteResult) => {
+                if (err) {
+                    console.error('Error creando cliente:', err);
+                    return res.status(500).json({
+                        error: 'Error al crear cliente',
                         details: err.message
                     });
                 }
 
                 clienteId = clienteResult.insertId;
-                procederConReserva(clienteId);
+                console.log('Nuevo cliente creado con ID:', clienteId);
+                crearReservaFinal(clienteId);
             });
         }
-
-        // Función para insertar la reserva una vez que tenemos el clienteId
-        function procederConReserva(clienteId) {
-            try {
-                // Validación de fecha y formato adecuado para MySQL
-                const fechaObj = new Date(`${fecha}T${horario}:00`);
-                if (isNaN(fechaObj.getTime())) {
-                    return res.status(400).json({
-                        error: 'Formato de fecha u hora inválido'
-                    });
-                }
-
-                // Formatear fecha para MySQL (YYYY-MM-DD HH:MM:SS)
-                const fechaFormateada = fechaObj.toISOString().slice(0, 19).replace('T', ' ');
-
-                // Asegurarse que personas sea un número
-                const cantidadPersonas = parseInt(personas);
-
-                // Verificar que la conversión a número sea válida
-                if (isNaN(cantidadPersonas) || cantidadPersonas <= 0) {
-                    return res.status(400).json({
-                        error: 'La cantidad de personas debe ser un número positivo'
-                    });
-                }
-
-                // Primero verificar que el espacio existe
-                connection.query('SELECT id, capacidad FROM espacio WHERE id = ?', [espacioIdFinal], (err, espacioResults) => {
-                    if (err) {
-                        console.error('Error al verificar espacio:', err);
-                        return res.status(500).json({
-                            error: 'Error al verificar si el espacio existe',
-                            details: err.message
-                        });
-                    }
-
-                    if (espacioResults.length === 0) {
-                        return res.status(400).json({
-                            error: 'El espacio seleccionado no existe. Debe crear primero el espacio en la base de datos.'
-                        });
-                    }
-
-                    // Verificar que la capacidad del espacio sea suficiente
-                    const capacidadEspacio = espacioResults[0].capacidad;
-                    if (cantidadPersonas > capacidadEspacio) {
-                        return res.status(400).json({
-                            error: `El espacio seleccionado solo tiene capacidad para ${capacidadEspacio} personas.`
-                        });
-                    }
-
-                    // Verificar si ya existe una reserva para esa fecha y hora en ese espacio
-                    const checkReservaQuery =
-                        'SELECT id FROM reserva WHERE fecha_reserva = ? AND espacio_id = ? AND estado != "cancelada"';
-
-                    connection.query(checkReservaQuery, [fechaFormateada, espacioIdFinal], (err, reservaResults) => {
-                        if (err) {
-                            console.error('Error al verificar disponibilidad:', err);
-                            return res.status(500).json({
-                                error: 'Error al verificar disponibilidad',
-                                details: err.message
-                            });
-                        }
-
-                        if (reservaResults.length > 0) {
-                            return res.status(409).json({
-                                error: 'Ya existe una reserva para esa fecha y hora en el espacio seleccionado.'
-                            });
-                        }
-
-                        // Ahora insertar en la tabla reserva
-                        const reservaQuery =
-                            'INSERT INTO reserva (fecha_reserva, estado, cantidad_personas, razon, cliente_id, espacio_id) VALUES (?, ?, ?, ?, ?, ?)';
-
-                        console.log('Intentando crear reserva con los valores:');
-                        console.log('fecha_reserva:', fechaFormateada);
-                        console.log('estado: pendiente');
-                        console.log('cantidad_personas:', cantidadPersonas);
-                        console.log('razon:', razon);
-                        console.log('cliente_id:', clienteId);
-                        console.log('espacio_id:', espacioIdFinal);
-
-                        connection.query(reservaQuery,
-                            [fechaFormateada, 'pendiente', cantidadPersonas, razon, clienteId, espacioIdFinal],
-                            (err, reservaResult) => {
-                                if (err) {
-                                    console.error('Error al crear reserva:', err);
-                                    return res.status(500).json({
-                                        error: 'Error al crear la reserva',
-                                        sqlMessage: err.sqlMessage,
-                                        sqlCode: err.code,
-                                        details: err.message
-                                    });
-                                }
-
-                                res.status(201).json({
-                                    message: '¡Reserva creada correctamente!',
-                                    clienteId: clienteId,
-                                    reservaId: reservaResult.insertId
-                                });
-                            }
-                        );
-                    });
-                });
-            } catch (error) {
-                console.error('Error en el procesamiento de la reserva:', error);
-                return res.status(500).json({
-                    error: 'Error interno al procesar la reserva',
-                    details: error.message
-                });
-            }
-        }
-
     });
 });
 

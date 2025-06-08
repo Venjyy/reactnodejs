@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/Admin/Layout/Sidebar';
 import Clientes from '../components/Admin/Sections/Clientes';
 import Espacios from '../components/Admin/Sections/Espacios';
@@ -6,10 +6,27 @@ import Servicios from '../components/Admin/Sections/Servicios';
 import Reservas from '../components/Admin/Sections/Reservas';
 import Pagos from '../components/Admin/Sections/Pagos';
 import Reportes from '../components/Admin/Sections/Reportes';
-import './AdminPanel.css'
 import Dashboard from '../components/Admin/Sections/Dashboard';
+import './AdminPanel.css';
+
 function AdminPanel() {
     const [activeSection, setActiveSection] = useState('dashboard');
+
+    // Escuchar eventos de navegación desde el Dashboard
+    useEffect(() => {
+        const handleCambiarSeccion = (event) => {
+            console.log('Evento de navegación recibido:', event.detail);
+            setActiveSection(event.detail);
+        };
+
+        // Agregar listener para el evento personalizado
+        window.addEventListener('cambiarSeccion', handleCambiarSeccion);
+
+        // Cleanup: remover listener al desmontar el componente
+        return () => {
+            window.removeEventListener('cambiarSeccion', handleCambiarSeccion);
+        };
+    }, []);
 
     const renderActiveSection = () => {
         switch (activeSection) {
@@ -44,6 +61,5 @@ function AdminPanel() {
         </div>
     );
 }
-
 
 export default AdminPanel;

@@ -257,7 +257,7 @@ function Reservas() {
                 horaFin: reserva.horaFin,
                 tipoEvento: reserva.tipoEvento,
                 numeroPersonas: reserva.numeroPersonas,
-                serviciosSeleccionados: reserva.serviciosSeleccionados,
+                serviciosSeleccionados: reserva.serviciosSeleccionados || [], // VALIDACIÓN AQUÍ
                 estado: reserva.estado,
                 observaciones: reserva.observaciones,
                 descuento: reserva.descuento || 0,
@@ -316,9 +316,9 @@ function Reservas() {
     };
 
     const filteredReservas = reservas.filter(reserva => {
-        const matchesSearch = reserva.clienteNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            reserva.espacioNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            reserva.tipoEvento.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = (reserva.clienteNombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (reserva.espacioNombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (reserva.tipoEvento || '').toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesStatus = filterStatus === 'todas' || reserva.estado === filterStatus;
 
@@ -417,15 +417,15 @@ function Reservas() {
                                 <tr key={reserva.id}>
                                     <td>
                                         <div>
-                                            <strong>{reserva.clienteNombre}</strong>
+                                            <strong>{reserva.clienteNombre || 'Cliente no disponible'}</strong>
                                             <br />
-                                            <small>{reserva.tipoEvento} - {reserva.numeroPersonas} personas</small>
+                                            <small>{reserva.tipoEvento || 'Tipo no especificado'} - {reserva.numeroPersonas || 0} personas</small>
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>{reserva.espacioNombre}</strong>
+                                        <strong>{reserva.espacioNombre || 'Espacio no disponible'}</strong>
                                         <br />
-                                        <small>{reserva.serviciosNombres ? reserva.serviciosNombres.join(', ') : 'Sin servicios'}</small>
+                                        <small>{reserva.serviciosNombres && reserva.serviciosNombres.length > 0 ? reserva.serviciosNombres.join(', ') : 'Sin servicios'}</small>
                                     </td>
                                     <td>
                                         <div>
@@ -440,13 +440,13 @@ function Reservas() {
                                         </span>
                                     </td>
                                     <td>
-                                        <strong>${reserva.costoTotal.toLocaleString()}</strong>
+                                        <strong>${(reserva.costoTotal || 0).toLocaleString()}</strong>
                                         <br />
-                                        <small>Anticipo: ${reserva.anticipo.toLocaleString()}</small>
+                                        <small>Anticipo: ${(reserva.anticipo || 0).toLocaleString()}</small>
                                     </td>
                                     <td>
-                                        <strong className={reserva.saldoPendiente > 0 ? 'text-danger' : 'text-success'}>
-                                            ${reserva.saldoPendiente.toLocaleString()}
+                                        <strong className={(reserva.saldoPendiente || 0) > 0 ? 'text-danger' : 'text-success'}>
+                                            ${(reserva.saldoPendiente || 0).toLocaleString()}
                                         </strong>
                                     </td>
                                     <td>

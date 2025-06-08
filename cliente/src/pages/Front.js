@@ -14,12 +14,14 @@ function Front() {
     const [razon, setRazon] = useState('');
     const [espacioId, setEspacioId] = useState('1');
     const [espacios, setEspacios] = useState([]);
+    const [servicios, setServicios] = useState([]);
+    const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
     const [mensaje, setMensaje] = useState('');
     const [status, setStatus] = useState('');
 
-    // Cargar espacios disponibles al cargar el componente
+    // Cargar espacios y servicios disponibles al cargar el componente
     useEffect(() => {
-        // Intentar obtener los espacios disponibles
+        // Cargar espacios
         Axios.get('http://localhost:3001/espacios')
             .then((response) => {
                 if (response.data.length > 0) {
@@ -33,6 +35,26 @@ function Front() {
             .catch((error) => {
                 console.error('Error al cargar espacios:', error);
                 crearEspacioPorDefecto();
+            });
+
+        // Cargar servicios disponibles
+        Axios.get('http://localhost:3001/api/servicios')
+            .then((response) => {
+                console.log('Servicios cargados para reserva:', response.data);
+                const serviciosDisponibles = response.data.filter(servicio => servicio.disponible);
+                setServicios(serviciosDisponibles);
+            })
+            .catch((error) => {
+                console.error('Error al cargar servicios:', error);
+                // Servicios mock en caso de error
+                setServicios([
+                    {
+                        id: 1,
+                        nombre: 'Servicio de Catering',
+                        precio: 25000,
+                        descripcion: 'Servicio de comida para eventos'
+                    }
+                ]);
             });
     }, []);
 
@@ -58,6 +80,28 @@ function Front() {
             });
     };
 
+    // Manejar selección de servicios
+    const handleServicioChange = (servicioId, isChecked) => {
+        if (isChecked) {
+            setServiciosSeleccionados([...serviciosSeleccionados, parseInt(servicioId)]);
+        } else {
+            setServiciosSeleccionados(serviciosSeleccionados.filter(id => id !== parseInt(servicioId)));
+        }
+    };
+
+    // Calcular costo total estimado
+    const calcularCostoEstimado = () => {
+        const espacioSeleccionado = espacios.find(e => e.id.toString() === espacioId);
+        const costoEspacio = espacioSeleccionado ? espacioSeleccionado.costo_base || 0 : 0;
+
+        const costoServicios = serviciosSeleccionados.reduce((total, servicioId) => {
+            const servicio = servicios.find(s => s.id === servicioId);
+            return total + (servicio ? servicio.precio : 0);
+        }, 0);
+
+        return costoEspacio + costoServicios;
+    };
+
     // Función para enviar la reserva
     const crearReserva = () => {
         Axios.post('http://localhost:3001/crearReserva', {
@@ -69,7 +113,8 @@ function Front() {
             horario: horario,
             personas: personas,
             razon: razon,
-            espacioId: espacioId
+            espacioId: espacioId,
+            servicios: serviciosSeleccionados // Agregar servicios seleccionados
         })
             .then((res) => {
                 setMensaje('¡Reserva creada correctamente!');
@@ -84,6 +129,7 @@ function Front() {
                 setPersonas('');
                 setRazon('');
                 setEspacioId('1');
+                setServiciosSeleccionados([]);
             })
             .catch((error) => {
                 console.error('Error al crear reserva:', error);
@@ -154,6 +200,12 @@ function Front() {
                         <h3>Área al aire libre</h3>
                         <p>Jardines, quincho y zona de juegos infantiles.</p>
                     </div>
+                    {servicios.length > 0 && (
+                        <div className="servicio-card">
+                            <h3>Servicios adicionales</h3>
+                            <p>Contamos con {servicios.length} servicios complementarios disponibles.</p>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -235,15 +287,15 @@ function Front() {
                             <option value="10:00">10:00 AM</option>
                             <option value="11:00">11:00 AM</option>
                             <option value="12:00">12:00 PM</option>
-                            <option value="13:00">01:00 PM</option>
-                            <option value="14:00">02:00 PM</option>
-                            <option value="15:00">03:00 PM</option>
-                            <option value="16:00">04:00 PM</option>
-                            <option value="17:00">05:00 PM</option>
-                            <option value="18:00">06:00 PM</option>
-                            <option value="19:00">07:00 PM</option>
-                            <option value="20:00">08:00 PM</option>
-                            <option value="21:00">09:00 PM</option>
+                            <option value="13:00">13:00 PM</option>
+                            <option value="14:00">14:00 PM</option>
+                            <option value="15:00">15:00 PM</option>
+                            <option value="16:00">16:00 PM</option>
+                            <option value="17:00">17:00 PM</option>
+                            <option value="18:00">18:00 PM</option>
+                            <option value="19:00">19:00 PM</option>
+                            <option value="20:00">20:00 PM</option>
+                            <option value="21:00">21:00 PM</option>
                         </select>
                     </div>
 
@@ -259,6 +311,7 @@ function Front() {
                                 espacios.map(espacio => (
                                     <option key={espacio.id} value={espacio.id}>
                                         {espacio.nombre} (Cap. {espacio.capacidad} personas)
+                                        {espacio.costo_base && ` - $${espacio.costo_base.toLocaleString()}`}
                                     </option>
                                 ))
                             ) : (
@@ -293,6 +346,65 @@ function Front() {
                             required
                         ></textarea>
                     </div>
+
+                    {/* Sección de Servicios Adicionales */}
+                    {servicios.length > 0 && (
+                        <div className="form-group servicios-adicionales">
+                            <label>Servicios adicionales (opcionales)</label>
+                            <div className="servicios-checkbox-group">
+                                {servicios.map(servicio => (
+                                    <div key={servicio.id} className="servicio-checkbox-item">
+                                        <label className="checkbox-label">
+                                            <input
+                                                type="checkbox"
+                                                value={servicio.id}
+                                                checked={serviciosSeleccionados.includes(servicio.id)}
+                                                onChange={(e) => handleServicioChange(servicio.id, e.target.checked)}
+                                            />
+                                            <div className="servicio-info">
+                                                <span className="servicio-nombre">{servicio.nombre}</span>
+                                                <span className="servicio-precio">${servicio.precio.toLocaleString()}</span>
+                                                {servicio.descripcion && (
+                                                    <small className="servicio-descripcion">{servicio.descripcion}</small>
+                                                )}
+                                            </div>
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Resumen de costos */}
+                    {(espacios.length > 0 || serviciosSeleccionados.length > 0) && (
+                        <div className="form-group costo-estimado">
+                            <h4>Resumen de costos estimados:</h4>
+                            <div className="costo-detalle">
+                                {espacios.find(e => e.id.toString() === espacioId)?.costo_base && (
+                                    <div className="costo-item">
+                                        <span>Espacio: </span>
+                                        <span>${espacios.find(e => e.id.toString() === espacioId).costo_base.toLocaleString()}</span>
+                                    </div>
+                                )}
+                                {serviciosSeleccionados.map(servicioId => {
+                                    const servicio = servicios.find(s => s.id === servicioId);
+                                    return servicio ? (
+                                        <div key={servicioId} className="costo-item">
+                                            <span>{servicio.nombre}: </span>
+                                            <span>${servicio.precio.toLocaleString()}</span>
+                                        </div>
+                                    ) : null;
+                                })}
+                                <div className="costo-total">
+                                    <strong>
+                                        <span>Total estimado: </span>
+                                        <span>${calcularCostoEstimado().toLocaleString()}</span>
+                                    </strong>
+                                </div>
+                            </div>
+                            <small>*Los precios son referenciales. El costo final será confirmado al procesar la reserva.</small>
+                        </div>
+                    )}
 
                     <button type="submit" className="btn">Reservar ahora</button>
                 </form>

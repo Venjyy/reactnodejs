@@ -29,7 +29,7 @@
 .header-content p {
     color: #7f8c8d;
     font-size: 16px;
-    margin: 0;
+    margin: 15px;
 }
 
 .btn-primary {
@@ -974,4 +974,696 @@
     .action-btn {
         padding: 12px;
     }
+}
+
+/* Estilos adicionales para el dashboard que faltan */
+
+/* Loading y error states */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.error-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+}
+
+.error-message {
+    color: #dc3545;
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.btn-retry {
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.3s ease;
+}
+
+.btn-retry:hover {
+    background: #5a67d8;
+}
+
+/* Botón de actualizar en el header */
+.btn-refresh {
+    background: #f8f9fa;
+    color: #667eea;
+    border: 2px solid #667eea;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-refresh:hover {
+    background: #667eea;
+    color: white;
+}
+
+/* Estilos para acciones rápidas mejorados */
+.action-btn.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.action-btn.secondary {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+}
+
+.action-btn.tertiary {
+    background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    color: white;
+}
+
+.action-btn.quaternary {
+    background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+    color: white;
+}
+
+.action-btn.primary:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b5b95 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.action-btn.secondary:hover {
+    background: linear-gradient(135deg, #218838 0%, #1e7e34 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.action-btn.tertiary:hover {
+    background: linear-gradient(135deg, #e0a800 0%, #dc7633 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.action-btn.quaternary:hover {
+    background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.3);
+}
+
+/* Estados de datos vacíos mejorados */
+.no-data {
+    text-align: center;
+    padding: 32px 20px;
+    color: #6c757d;
+}
+
+.no-data p {
+    margin: 0;
+    font-style: italic;
+    font-size: 14px;
+}
+
+/* Mejoras para el cliente info en reservas recientes */
+.client-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.client-avatar {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+/* Mejoras para el ranking de espacios */
+.ranking-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.ranking-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+.ranking-percentage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 80px;
+}
+
+.ranking-percentage span {
+    font-size: 12px;
+    color: #6c757d;
+    font-weight: 500;
+    min-width: 35px;
+    text-align: right;
+}
+
+/* Mejoras para botones ver más */
+.btn-view {
+    background: none;
+    border: none;
+    color: #667eea;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    padding: 4px 0;
+}
+
+.btn-view:hover {
+    color: #5a67d8;
+    text-decoration: none;
+    transform: translateX(4px);
+}
+
+.btn-view::after {
+    content: ' →';
+    transition: transform 0.2s ease;
+}
+
+.btn-view:hover::after {
+    transform: translateX(2px);
+}
+
+/* Responsive adicional para elementos específicos del dashboard */
+@media (max-width: 768px) {
+    .btn-refresh {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .client-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .client-avatar {
+        width: 28px;
+        height: 28px;
+        font-size: 10px;
+    }
+
+    .ranking-percentage {
+        min-width: auto;
+        width: 100%;
+        margin-top: 8px;
+        justify-content: space-between;
+    }
+
+    .action-btn span {
+        font-size: 18px;
+    }
+
+    .financial-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        padding: 8px 0;
+    }
+
+    .financial-amount {
+        align-self: flex-end;
+    }
+}
+
+/* Animaciones adicionales */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.dashboard-card {
+    animation: fadeIn 0.5s ease-out;
+}
+
+.stat-item {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Mejoras para estados de carga específicos */
+.loading-container p {
+    color: #6c757d;
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+/* Mejoras para estados de carga específicos */
+.loading-container p {
+    color: #6c757d;
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+/* ===== ESTILOS PARA MODALES DEL DASHBOARD ===== */
+
+/* Modal overlay mejorado para dashboard */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+}
+
+/* Modal content específico para dashboard */
+.modal-content {
+    background: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+    animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-40px) scale(0.9);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Header del modal */
+.modal-header-content {
+    padding: 28px 32px;
+    position: relative;
+}
+
+.modal-header-content h3 {
+    margin: 0 0 24px 0;
+    color: #2c3e50;
+    font-size: 1.6rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-right: 50px;
+}
+
+.modal-header-content h3 span {
+    font-size: 1.8rem;
+}
+
+/* Botón de cerrar modal */
+.modal-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: #f8f9fa;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #6c757d;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    font-weight: 300;
+}
+
+.modal-close:hover {
+    background: #e9ecef;
+    color: #495057;
+    transform: scale(1.1);
+}
+
+/* Formulario del modal */
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Form rows para campos en línea */
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* Form groups */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95rem;
+    margin-bottom: 2px;
+}
+
+/* Inputs del formulario */
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 12px 16px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    background: #fff;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    background: #fafbfc;
+}
+
+.form-group input::placeholder {
+    color: #adb5bd;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+/* Checkbox group para servicios */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 180px;
+    overflow-y: auto;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px;
+    background: #f8f9fa;
+}
+
+.checkbox-group::-webkit-scrollbar {
+    width: 6px;
+}
+
+.checkbox-group::-webkit-scrollbar-track {
+    background: #f1f3f4;
+    border-radius: 3px;
+}
+
+.checkbox-group::-webkit-scrollbar-thumb {
+    background: #c1c7d0;
+    border-radius: 3px;
+}
+
+.checkbox-group::-webkit-scrollbar-thumb:hover {
+    background: #a5b3c1;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 10px 12px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    background: white;
+    border: 1px solid #e9ecef;
+}
+
+.checkbox-item:hover {
+    background: #f0f7ff;
+    border-color: #667eea;
+    transform: translateX(2px);
+}
+
+.checkbox-item input[type="checkbox"] {
+    margin: 0;
+    transform: scale(1.2);
+    accent-color: #667eea;
+    cursor: pointer;
+}
+
+.checkbox-item span {
+    color: #2c3e50;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Acciones del modal */
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Botones del modal */
+.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 14px 28px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 140px;
+    justify-content: center;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+    background: linear-gradient(135deg, #5a67d8 0%, #6b5b95 100%);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-secondary {
+    background: #f8f9fa;
+    color: #6c757d;
+    border: 2px solid #e9ecef;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    min-width: 120px;
+}
+
+.btn-secondary:hover {
+    background: #e9ecef;
+    border-color: #c6d0dd;
+    color: #495057;
+    transform: translateY(-1px);
+}
+
+/* Estados especiales para inputs */
+.form-group input[type="date"],
+.form-group input[type="time"] {
+    cursor: pointer;
+}
+
+.form-group select {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 12px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-right: 40px;
+    appearance: none;
+}
+
+/* Validación visual */
+.form-group input:required:valid {
+    border-color: #28a745;
+}
+
+.form-group input:required:invalid:not(:placeholder-shown) {
+    border-color: #dc3545;
+}
+
+/* Responsive para modales */
+@media (max-width: 768px) {
+    .modal-overlay {
+        padding: 10px;
+        align-items: flex-start;
+        padding-top: 20px;
+    }
+
+    .modal-content {
+        max-width: 100%;
+        margin: 0;
+        border-radius: 12px;
+        max-height: calc(100vh - 40px);
+    }
+
+    .modal-header-content {
+        padding: 20px 24px;
+    }
+
+    .modal-header-content h3 {
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+    }
+
+    .modal-close {
+        top: 20px;
+        right: 20px;
+        width: 32px;
+        height: 32px;
+        font-size: 18px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .modal-actions {
+        flex-direction: column-reverse;
+        gap: 12px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+        width: 100%;
+        justify-content: center;
+        padding: 14px 20px;
+    }
+
+    .checkbox-group {
+        max-height: 140px;
+        padding: 12px;
+    }
+
+    .checkbox-item {
+        padding: 8px 10px;
+    }
+}
+
+/* Estados de carga para modales */
+.modal-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.modal-loading .btn-primary {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.modal-loading .btn-primary::after {
+    content: "";
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+}
+
+/* Mejoras específicas para inputs de números */
+.form-group input[type="number"] {
+    text-align: right;
+}
+
+/* Placeholder mejorado para select */
+.form-group select option:first-child {
+    color: #adb5bd;
+}
+
+/* Mejoras para textarea */
+.form-group textarea:focus {
+    min-height: 100px;
 }
