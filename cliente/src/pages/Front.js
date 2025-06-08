@@ -5,6 +5,7 @@ import bgImage from '../assets/images/bg.jpg';
 import fotorefImage from '../assets/images/fotoref.png';
 import saloninteriorImage from '../assets/images/saloninterior.jpg';
 import cocinaImage from '../assets/images/cocina.jfif';
+import logoImage from '../assets/images/logo.png';
 
 function Front() {
     // Estados para la sección de reserva
@@ -169,7 +170,14 @@ function Front() {
             {/* Encabezado */}
             <header>
                 <div className="container header-content">
-                    <div className="logo" aria-label="El Patio de Lea">El Patio de Lea</div>
+                    <div className="logo" aria-label="El Patio de Lea">
+                        <img
+                            src={logoImage}
+                            alt="Logo El Patio de Lea"
+                            className="logo-image"
+                        />
+                        <span className="logo-text">El Patio de Lea</span>
+                    </div>
                     <nav aria-label="Navegación principal">
                         <a href="#servicios">Servicios</a>
                         <a href="#reservas">Reservas</a>
@@ -422,27 +430,133 @@ function Front() {
                 )}
             </section>
 
-            {/* Conócenos */}
-            <section id="conoce" className="servicios container">
-                <h2>Conoce el lugar</h2>
-                <div className="galeria-grid">
-                    <img src={fotorefImage} alt="Vista del jardín" />
-                    <img src={saloninteriorImage} alt="Interior del salón de eventos" />
-                    <img src={cocinaImage} alt="Área de cocina equipada" />
-                    <img src={fotorefImage} alt="Terraza al aire libre" />
+            {/* Conócenos - Completamente rediseñado */}
+            <section id="conoce">
+                <div className="galeria-container">
+                    <h2>Conoce nuestro espacio</h2>
+                    <div className="galeria-intro">
+                        <p>Descubre cada rincón de El Patio de Lea, un lugar mágico diseñado especialmente para crear momentos inolvidables con tu familia.</p>
+                    </div>
+                    <div className="galeria-grid">
+                        <div className="galeria-item">
+                            <img src={fotorefImage} alt="Vista panorámica del jardín" />
+                            <div className="galeria-overlay">
+                                <div className="galeria-text">
+                                    <h3>Jardines Naturales</h3>
+                                    <p>Amplios espacios verdes rodeados de naturaleza</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="galeria-item">
+                            <img src={saloninteriorImage} alt="Interior acogedor del salón" />
+                            <div className="galeria-overlay">
+                                <div className="galeria-text">
+                                    <h3>Salón Principal</h3>
+                                    <p>Elegante salón de madera con capacidad para 100 personas</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="galeria-item">
+                            <img src={cocinaImage} alt="Cocina completamente equipada" />
+                            <div className="galeria-overlay">
+                                <div className="galeria-text">
+                                    <h3>Cocina Pro</h3>
+                                    <p>Cocina profesional totalmente equipada</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="galeria-item">
+                            <img src={fotorefImage} alt="Área de recreación familiar" />
+                            <div className="galeria-overlay">
+                                <div className="galeria-text">
+                                    <h3>Zona de Juegos</h3>
+                                    <p>Espacio seguro y divertido para los más pequeños</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            {/* Datos de interés */}
-            <section className="datos-interes container">
-                <h2>Datos de interés</h2>
-                <ul>
-                    <li>Ubicado en el campo, rodeado de naturaleza.</li>
-                    <li>Espacios al aire libre y terrazas cubiertas.</li>
-                    <li>Salón de eventos de madera tradicional.</li>
-                    <li>Cocina equipada disponible para arriendo.</li>
-                    <li>Zona de quincho y juegos infantiles.</li>
-                </ul>
+            {/* Separador visual */}
+            <div className="section-divider"></div>
+
+            {/* Datos de interés - Completamente rediseñados */}
+            <section className="datos-interes">
+                <div className="datos-container">
+                    <h2>¿Por qué elegir El Patio de Lea?</h2>
+                    <div className="datos-intro">
+                        <p>Conoce todas las ventajas y comodidades que hacen de nuestro centro de eventos el lugar perfecto para tu celebración.</p>
+                    </div>
+
+                    <div className="datos-grid">
+                        <div className="dato-card">
+                            <div className="dato-icon">🏞️</div>
+                            <h3>Ubicación Privilegiada</h3>
+                            <p>Ubicado en el campo, rodeado de naturaleza pura y aire fresco, lejos del ruido de la ciudad.</p>
+                        </div>
+
+                        <div className="dato-card">
+                            <div className="dato-icon">🏡</div>
+                            <h3>Arquitectura Única</h3>
+                            <p>Hermoso salón de madera tradicional que combina elegancia rústica con comodidad moderna.</p>
+                        </div>
+
+                        <div className="dato-card">
+                            <div className="dato-icon">👨‍👩‍👧‍👦</div>
+                            <h3>Ideal para Familias</h3>
+                            <p>Espacios diseñados pensando en la comodidad y diversión de toda la familia, especialmente los niños.</p>
+                        </div>
+
+                        <div className="dato-card">
+                            <div className="dato-icon">🍽️</div>
+                            <h3>Cocina Profesional</h3>
+                            <p>Cocina completamente equipada disponible para que prepares tus propios platos o contrates catering.</p>
+                        </div>
+
+                        <div className="dato-card">
+                            <div className="dato-icon">🎪</div>
+                            <h3>Entretenimiento Completo</h3>
+                            <p>Zona de quincho, juegos infantiles y amplios espacios para actividades al aire libre.</p>
+                        </div>
+
+                        <div className="dato-card">
+                            <div className="dato-icon">🅿️</div>
+                            <h3>Estacionamiento Amplio</h3>
+                            <p>Cómodo estacionamiento para todos tus invitados sin preocupaciones de espacio.</p>
+                        </div>
+                    </div>
+
+                    <div className="caracteristicas-especiales">
+                        <h3>Características Especiales</h3>
+                        <ul className="caracteristicas-list">
+                            <li className="caracteristica-item">
+                                <div className="caracteristica-icon">🌳</div>
+                                <span className="caracteristica-text">Terrazas cubiertas con vista al jardín</span>
+                            </li>
+                            <li className="caracteristica-item">
+                                <div className="caracteristica-icon">🔥</div>
+                                <span className="caracteristica-text">Área de quincho totalmente equipada</span>
+                            </li>
+                            <li className="caracteristica-item">
+                                <div className="caracteristica-icon">🎠</div>
+                                <span className="caracteristica-text">Zona de juegos segura para niños</span>
+                            </li>
+                            <li className="caracteristica-item">
+                                <div className="caracteristica-icon">🏐</div>
+                                <span className="caracteristica-text">Espacios amplios para actividades deportivas</span>
+                            </li>
+                            <li className="caracteristica-item">
+                                <div className="caracteristica-icon">🎵</div>
+                                <span className="caracteristica-text">Sistema de sonido profesional</span>
+                            </li>
+                            <li className="caracteristica-item">
+                                <div className="caracteristica-icon">💡</div>
+                                <span className="caracteristica-text">Iluminación LED ambiente configurable</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </section>
 
             {/* Contacto */}
