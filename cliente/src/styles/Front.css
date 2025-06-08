@@ -37,6 +37,7 @@
     --sombra-suave: rgba(44, 24, 16, 0.12);
     --sombra-media: rgba(44, 24, 16, 0.25);
     --patron-mapuche: linear-gradient(45deg, rgba(44, 24, 16, 0.02) 25%, transparent 25%), linear-gradient(-45deg, rgba(44, 24, 16, 0.02) 25%, transparent 25%);
+    --hero-bg-image: none;
 }
 
 /* Estilos globales del cuerpo con inspiración natural */
@@ -174,7 +175,8 @@ nav a:hover {
     left: 0;
     right: 0;
     bottom: 0;
-    /* background: url('./images/bg.jpg') no-repeat center center/cover; */
+    background: var(--hero-bg-image) no-repeat center center/cover;
+    /* USAR LA VARIABLE */
     opacity: 0.25;
     z-index: 1;
     filter: sepia(0.3) contrast(1.1);

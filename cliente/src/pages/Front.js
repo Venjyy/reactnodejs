@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Axios from 'axios';
 import '../styles/Front.css'; // Asegúrate de tener este archivo CSS
+import bgImage from '../assets/images/bg.jpg';
+import fotorefImage from '../assets/images/fotoref.png';
+import saloninteriorImage from '../assets/images/saloninterior.jpg';
+import cocinaImage from '../assets/images/cocina.jfif';
 
 function Front() {
     // Estados para la sección de reserva
@@ -21,6 +25,9 @@ function Front() {
 
     // Cargar espacios y servicios disponibles al cargar el componente
     useEffect(() => {
+        // Aplicar imagen de fondo dinámicamente
+        document.documentElement.style.setProperty('--hero-bg-image', `url(${bgImage})`);
+
         // Cargar espacios
         Axios.get('http://localhost:3001/espacios')
             .then((response) => {
@@ -46,7 +53,6 @@ function Front() {
             })
             .catch((error) => {
                 console.error('Error al cargar servicios:', error);
-                // Servicios mock en caso de error
                 setServicios([
                     {
                         id: 1,
@@ -420,10 +426,10 @@ function Front() {
             <section id="conoce" className="servicios container">
                 <h2>Conoce el lugar</h2>
                 <div className="galeria-grid">
-                    <img src="/images/fotoref.png" alt="Vista del jardín" />
-                    <img src="/images/saloninterior.jpg" alt="Interior del salón de eventos" />
-                    <img src="/images/cocina.jfif" alt="Área de cocina equipada" />
-                    <img src="/images/fotoref.png" alt="Terraza al aire libre" />
+                    <img src={fotorefImage} alt="Vista del jardín" />
+                    <img src={saloninteriorImage} alt="Interior del salón de eventos" />
+                    <img src={cocinaImage} alt="Área de cocina equipada" />
+                    <img src={fotorefImage} alt="Terraza al aire libre" />
                 </div>
             </section>
 
