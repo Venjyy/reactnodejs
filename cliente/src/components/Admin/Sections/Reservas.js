@@ -52,46 +52,23 @@ function Reservas() {
         loadServicios();
     }, []);
 
+
     const loadReservas = async () => {
         try {
             const response = await fetch('http://localhost:3001/api/reservas');
             if (response.ok) {
                 const data = await response.json();
+                console.log('Datos de reservas recibidos:', data);
                 setReservas(data);
                 console.log('Reservas cargadas desde BD:', data.length);
             } else {
                 console.error('Error al cargar reservas:', response.statusText);
-                // Mantener datos mock como fallback
-                const mockData = [
-                    {
-                        id: 1,
-                        clienteId: 1,
-                        clienteNombre: 'María González',
-                        espacioId: 1,
-                        espacioNombre: 'Salón Principal',
-                        fechaEvento: '2025-06-20',
-                        horaInicio: '18:00',
-                        horaFin: '23:00',
-                        tipoEvento: 'Cumpleaños',
-                        numeroPersonas: 85,
-                        serviciosSeleccionados: [1, 2],
-                        serviciosNombres: ['Catering Premium', 'Decoración Temática'],
-                        estado: 'confirmada',
-                        fechaCreacion: '2025-05-15',
-                        observaciones: 'Cumpleaños de 50 años, decoración en dorado',
-                        costoEspacio: 380000,
-                        costoServicios: 630000,
-                        descuento: 50000,
-                        costoTotal: 960000,
-                        anticipo: 480000,
-                        saldoPendiente: 480000
-                    }
-                ];
-                setReservas(mockData);
+                const errorData = await response.json();
+                console.error('Detalles del error:', errorData);
+                setReservas([]);
             }
         } catch (error) {
             console.error('Error cargando reservas:', error);
-            // Usar datos mock como fallback en caso de error de conexión
             setReservas([]);
         }
     };
@@ -325,6 +302,11 @@ function Reservas() {
         return matchesSearch && matchesStatus;
     });
 
+    console.log('Total reservas:', reservas.length);
+    console.log('Reservas filtradas:', filteredReservas.length);
+    console.log('Término de búsqueda:', searchTerm);
+    console.log('Filtro de estado:', filterStatus);
+
     return (
         <div className="section-container">
             <div className="section-header">
@@ -419,40 +401,52 @@ function Reservas() {
                                         <div>
                                             <strong>{reserva.clienteNombre || 'Cliente no disponible'}</strong>
                                             <br />
-                                            <small>{reserva.tipoEvento || 'Tipo no especificado'} - {reserva.numeroPersonas || 0} personas</small>
+                                            <small>
+                                                {reserva.tipoEvento || 'Tipo no especificado'} - {reserva.numeroPersonas || 0} personas
+                                            </small>
                                         </div>
                                     </td>
                                     <td>
                                         <strong>{reserva.espacioNombre || 'Espacio no disponible'}</strong>
                                         <br />
-                                        <small>{reserva.serviciosNombres && reserva.serviciosNombres.length > 0 ? reserva.serviciosNombres.join(', ') : 'Sin servicios'}</small>
+                                        <small>
+                                            {reserva.serviciosNombres && reserva.serviciosNombres.length > 0
+                                                ? reserva.serviciosNombres.join(', ')
+                                                : 'Sin servicios adicionales'
+                                            }
+                                        </small>
                                     </td>
                                     <td>
                                         <div>
-                                            <strong>{new Date(reserva.fechaEvento).toLocaleDateString()}</strong>
+                                            <strong>
+                                                {reserva.fechaEvento
+                                                    ? new Date(reserva.fechaEvento + 'T00:00:00').toLocaleDateString('es-CL')
+                                                    : 'Fecha no disponible'
+                                                }
+                                            </strong>
                                             <br />
-                                            <small>{reserva.horaInicio} - {reserva.horaFin}</small>
+                                            <small>{reserva.horaInicio || '--:--'} - {reserva.horaFin || '--:--'}</small>
                                         </div>
                                     </td>
                                     <td>
-                                        <span className={`badge badge-${estadosReserva.find(e => e.value === reserva.estado)?.color}`}>
-                                            {estadosReserva.find(e => e.value === reserva.estado)?.label}
+                                        <span className={`badge badge-${estadosReserva.find(e => e.value === reserva.estado)?.color || 'secondary'}`}>
+                                            {estadosReserva.find(e => e.value === reserva.estado)?.label || reserva.estado}
                                         </span>
                                     </td>
                                     <td>
-                                        <strong>${(reserva.costoTotal || 0).toLocaleString()}</strong>
+                                        <strong>${(reserva.costoTotal || 0).toLocaleString('es-CL')}</strong>
                                         <br />
-                                        <small>Anticipo: ${(reserva.anticipo || 0).toLocaleString()}</small>
+                                        <small>Anticipo: ${(reserva.anticipo || 0).toLocaleString('es-CL')}</small>
                                     </td>
                                     <td>
                                         <strong className={(reserva.saldoPendiente || 0) > 0 ? 'text-danger' : 'text-success'}>
-                                            ${(reserva.saldoPendiente || 0).toLocaleString()}
+                                            ${(reserva.saldoPendiente || 0).toLocaleString('es-CL')}
                                         </strong>
                                     </td>
                                     <td>
                                         <div className="action-buttons">
-                                            <button className="btn-view">👁️</button>
-                                            <button className="btn-edit" onClick={() => openModal(reserva)}>✏️</button>
+                                            <button className="btn-view" title="Ver detalles">👁️</button>
+                                            <button className="btn-edit" onClick={() => openModal(reserva)} title="Editar">✏️</button>
                                             {reserva.estado === 'pendiente' && (
                                                 <button
                                                     className="btn-edit"

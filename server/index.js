@@ -578,7 +578,7 @@ app.post('/crearReserva', (req, res) => {
 
 // Endpoint específico para obtener reservas para pagos (dashboard)
 app.get('/api/reservas', (req, res) => {
-    console.log('Endpoint /api/reservas llamado desde dashboard para pagos');
+    console.log('Endpoint /api/reservas llamado');
 
     const query = `
         SELECT 
@@ -587,11 +587,17 @@ app.get('/api/reservas', (req, res) => {
             r.estado,
             r.cantidad_personas,
             r.razon,
+            r.fecha_creacion,
+            c.id as cliente_id,
             c.nombre as cliente_nombre,
             c.rut as cliente_rut,
+            e.id as espacio_id,
             e.nombre as espacio_nombre,
-            e.costo_base,
-            COALESCE(SUM(s.costo), 0) as costo_servicios,
+            e.costo_base as espacio_costo,
+            GROUP_CONCAT(DISTINCT s.id) as servicios_ids,
+            GROUP_CONCAT(DISTINCT s.nombre) as servicios_nombres,
+            GROUP_CONCAT(DISTINCT s.costo) as servicios_costos,
+            COALESCE(SUM(DISTINCT s.costo), 0) as total_servicios,
             COALESCE(pagos.total_pagado, 0) as total_pagado
         FROM reserva r
         JOIN cliente c ON r.cliente_id = c.id
@@ -603,39 +609,69 @@ app.get('/api/reservas', (req, res) => {
             FROM pago
             GROUP BY reserva_id
         ) pagos ON r.id = pagos.reserva_id
-        WHERE r.estado IN ('pendiente', 'confirmada')
-        GROUP BY r.id, r.fecha_reserva, r.estado, r.cantidad_personas, r.razon,
-                 c.nombre, c.rut, e.nombre, e.costo_base, pagos.total_pagado
-        ORDER BY r.fecha_reserva ASC
+        GROUP BY r.id, r.fecha_reserva, r.estado, r.cantidad_personas, r.razon, r.fecha_creacion,
+                 c.id, c.nombre, c.rut, e.id, e.nombre, e.costo_base, pagos.total_pagado
+        ORDER BY r.fecha_reserva DESC
     `;
 
     connection.query(query, (err, results) => {
         if (err) {
-            console.error('Error al obtener reservas para pagos:', err);
+            console.error('Error al obtener reservas:', err);
             return res.status(500).json({ error: 'Error al obtener reservas' });
         }
 
+        console.log('Resultados brutos de la consulta:', results);
+
+        // Transformar los datos para el formato esperado por el frontend
         const reservasFormatted = results.map(reserva => {
-            const costoTotal = parseFloat(reserva.costo_base) + parseFloat(reserva.costo_servicios);
-            const totalPagado = parseFloat(reserva.total_pagado);
+            console.log('Procesando reserva:', reserva.id);
+
+            const fechaReserva = new Date(reserva.fecha_reserva);
+            const costoEspacio = parseFloat(reserva.espacio_costo) || 0;
+            const costoServicios = parseFloat(reserva.total_servicios) || 0;
+            const costoTotal = costoEspacio + costoServicios;
+            const totalPagado = parseFloat(reserva.total_pagado) || 0;
             const saldoPendiente = costoTotal - totalPagado;
 
-            return {
+            // Procesar servicios
+            let serviciosSeleccionados = [];
+            let serviciosNombres = [];
+
+            if (reserva.servicios_ids && reserva.servicios_ids !== '') {
+                serviciosSeleccionados = reserva.servicios_ids.split(',').map(id => parseInt(id));
+                serviciosNombres = reserva.servicios_nombres ? reserva.servicios_nombres.split(',') : [];
+            }
+
+            const reservaFormateada = {
                 id: reserva.id,
-                fecha_reserva: reserva.fecha_reserva,
-                cliente_nombre: reserva.cliente_nombre,
-                cliente_rut: reserva.cliente_rut,
-                espacio_nombre: reserva.espacio_nombre,
-                razon: reserva.razon,
-                cantidad_personas: reserva.cantidad_personas,
-                estado: reserva.estado,
+                clienteId: reserva.cliente_id,
+                clienteNombre: reserva.cliente_nombre || 'Sin nombre',
+                espacioId: reserva.espacio_id,
+                espacioNombre: reserva.espacio_nombre || 'Sin espacio',
+                fechaEvento: fechaReserva.toISOString().split('T')[0],
+                horaInicio: fechaReserva.toTimeString().substring(0, 5),
+                horaFin: new Date(fechaReserva.getTime() + 4 * 60 * 60 * 1000).toTimeString().substring(0, 5),
+                tipoEvento: reserva.razon || 'Sin especificar',
+                numeroPersonas: reserva.cantidad_personas || 0,
+                serviciosSeleccionados: serviciosSeleccionados,
+                serviciosNombres: serviciosNombres,
+                estado: reserva.estado || 'pendiente',
+                fechaCreacion: reserva.fecha_creacion ? reserva.fecha_creacion.toISOString().split('T')[0] : '',
+                observaciones: `Cliente: ${reserva.cliente_nombre} (${reserva.cliente_rut})`,
+                costoEspacio: costoEspacio,
+                costoServicios: costoServicios,
+                descuento: 0,
                 costoTotal: costoTotal,
-                totalPagado: totalPagado,
+                anticipo: totalPagado,
                 saldoPendiente: Math.max(0, saldoPendiente)
             };
+
+            console.log('Reserva formateada:', reservaFormateada);
+            return reservaFormateada;
         });
 
-        console.log('Reservas para pagos obtenidas desde dashboard:', reservasFormatted.length);
+        console.log('Reservas obtenidas y formateadas:', reservasFormatted.length);
+        console.log('Primera reserva como ejemplo:', reservasFormatted[0]);
         res.status(200).json(reservasFormatted);
     });
 });
@@ -1818,12 +1854,12 @@ app.get('/api/reservas', (req, res) => {
             return {
                 id: reserva.id,
                 clienteId: reserva.cliente_id,
-                clienteNombre: reserva.cliente_nombre, // CAMPO CORREGIDO
+                clienteNombre: reserva.cliente_nombre,
                 espacioId: reserva.espacio_id,
-                espacioNombre: reserva.espacio_nombre, // CAMPO CORREGIDO
+                espacioNombre: reserva.espacio_nombre,
                 fechaEvento: fechaReserva.toISOString().split('T')[0],
                 horaInicio: fechaReserva.toTimeString().substring(0, 5),
-                horaFin: new Date(fechaReserva.getTime() + 4 * 60 * 60 * 1000).toTimeString().substring(0, 5),
+                horaFin: new Date(fechaReserva.getTime() + 4 * 60 * 60 * 1000).toTimeString().substring(0, 5), // +4 horas por defecto
                 tipoEvento: reserva.razon,
                 numeroPersonas: reserva.cantidad_personas,
                 serviciosSeleccionados: serviciosSeleccionados,
@@ -1833,7 +1869,7 @@ app.get('/api/reservas', (req, res) => {
                 observaciones: `Cliente: ${reserva.cliente_nombre} (${reserva.cliente_rut})`,
                 costoEspacio: costoEspacio,
                 costoServicios: costoServicios,
-                descuento: 0,
+                descuento: 0, // No existe en BD, valor por defecto
                 costoTotal: costoTotal,
                 anticipo: totalPagado,
                 saldoPendiente: Math.max(0, saldoPendiente)

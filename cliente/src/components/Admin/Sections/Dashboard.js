@@ -429,7 +429,6 @@ function Dashboard() {
                     </div>
                 </div>
             </div>
-
             <div className="section-content">
                 <div className="dashboard-grid">
                     <div className="dashboard-card">
@@ -441,7 +440,6 @@ function Dashboard() {
                             {reservasRecientes.length > 0 ? (
                                 reservasRecientes.map((reserva) => (
                                     <div key={reserva.id} className="booking-item">
-
                                         <div className="booking-info">
                                             <div className="client-info">
                                                 <div className="client-avatar">

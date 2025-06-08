@@ -169,7 +169,7 @@ function Front() {
             {/* Encabezado */}
             <header>
                 <div className="container header-content">
-                    <div className="logo" aria-label="Centro de Eventos Cañete">Centro de Eventos Cañete</div>
+                    <div className="logo" aria-label="El Patio de Lea">El Patio de Lea</div>
                     <nav aria-label="Navegación principal">
                         <a href="#servicios">Servicios</a>
                         <a href="#reservas">Reservas</a>
@@ -184,7 +184,7 @@ function Front() {
             <section className="hero">
                 <div className="overlay"></div>
                 <div className="hero-content">
-                    <h1>Reserva tu evento ideal en Cañete</h1>
+                    <h1>Reserva en El Patio de Lea</h1>
                     <p id="textoRotativo" aria-live="polite">Asegura tu lugar con nosotros</p>
                     <a href="#reservas" className="btn">Agendar ahora</a>
                 </div>
@@ -453,7 +453,7 @@ function Front() {
 
             {/* Pie de página */}
             <footer>
-                <p>&copy; 2025 Centro de Eventos Cañete. Todos los derechos reservados.</p>
+                <p>&copy; 2025 El Patio de Lea. Todos los derechos reservados.</p>
             </footer>
         </React.Fragment>
     );
