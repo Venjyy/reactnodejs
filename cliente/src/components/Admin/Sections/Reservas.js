@@ -115,7 +115,40 @@ function Reservas() {
             setEspacios([]);
         }
     };
+    const eliminarReserva = async (id, clienteNombre, espacioNombre) => {
+        const confirmacion = window.confirm(
+            `¿Estás seguro de que deseas eliminar la reserva de ${clienteNombre} en ${espacioNombre}?\n\nEsta acción no se puede deshacer.`
+        );
 
+        if (!confirmacion) {
+            return;
+        }
+
+        try {
+            console.log('Eliminando reserva:', id);
+
+            const response = await fetch(`http://localhost:3001/api/reservas/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Reserva eliminada correctamente:', result);
+                loadReservas(); // Recargar la lista
+                alert('Reserva eliminada correctamente');
+            } else {
+                const errorData = await response.json();
+                console.error('Error al eliminar reserva:', errorData.error);
+                alert(errorData.error || 'Error al eliminar la reserva');
+            }
+        } catch (error) {
+            console.error('Error al eliminar reserva:', error);
+            alert('Error de conexión al eliminar la reserva');
+        }
+    };
     const loadServicios = async () => {
         try {
             const response = await fetch('http://localhost:3001/api/reservas/servicios');
@@ -456,6 +489,17 @@ function Reservas() {
                                                     ✅
                                                 </button>
                                             )}
+                                            <button
+                                                className="btn-delete"
+                                                onClick={() => eliminarReserva(
+                                                    reserva.id,
+                                                    reserva.clienteNombre,
+                                                    reserva.espacioNombre
+                                                )}
+                                                title="Eliminar reserva"
+                                            >
+                                                🗑️
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>

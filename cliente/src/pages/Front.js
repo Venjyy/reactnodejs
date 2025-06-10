@@ -111,7 +111,7 @@ function Front() {
 
     // Función para enviar la reserva
     const crearReserva = () => {
-        Axios.post('http://localhost:3001/crearReserva', {
+        Axios.post('http://localhost:3001/api/reservas-publicas', {
             nombre: nombre,
             rut: rut,
             correo: correo,

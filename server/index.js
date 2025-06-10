@@ -446,7 +446,170 @@ app.post('/api/clientes', (req, res) => {
         });
     });
 });
+// Endpoint específico para reservas desde el formulario público
+app.post('/api/reservas-publicas', (req, res) => {
+    console.log('Endpoint POST /api/reservas-publicas llamado desde formulario público');
+    console.log('Datos recibidos:', req.body);
 
+    const { nombre, rut, correo, contacto, fecha, horario, personas, razon, espacioId, servicios } = req.body;
+
+    if (!nombre || !rut || !fecha || !personas || !razon || !espacioId) {
+        return res.status(400).json({
+            error: 'Faltan campos obligatorios: nombre, rut, fecha, personas, razon y espacioId son requeridos'
+        });
+    }
+
+    // Verificar si el cliente ya existe
+    connection.query('SELECT id FROM cliente WHERE rut = ?', [rut], (err, clienteResults) => {
+        if (err) {
+            console.error('Error verificando cliente:', err);
+            return res.status(500).json({
+                error: 'Error al verificar cliente',
+                details: err.message
+            });
+        }
+
+        let clienteId;
+
+        const crearReservaFinal = (clienteId) => {
+            // Verificar que el espacio existe y está disponible
+            connection.query('SELECT id, nombre, disponible FROM espacio WHERE id = ?', [espacioId], (err, espacioResults) => {
+                if (err) {
+                    console.error('Error verificando espacio:', err);
+                    return res.status(500).json({
+                        error: 'Error al verificar espacio',
+                        details: err.message
+                    });
+                }
+
+                if (espacioResults.length === 0) {
+                    return res.status(400).json({
+                        error: `No existe un espacio con ID ${espacioId}`
+                    });
+                }
+
+                if (!espacioResults[0].disponible) {
+                    return res.status(400).json({
+                        error: 'El espacio seleccionado no está disponible actualmente'
+                    });
+                }
+
+                // Verificar disponibilidad en la fecha seleccionada
+                const fechaReserva = `${fecha} ${horario || '12:00'}:00`;
+                const checkDisponibilidadQuery = `
+                    SELECT id FROM reserva 
+                    WHERE espacio_id = ? 
+                    AND DATE(fecha_reserva) = ? 
+                    AND estado IN ('pendiente', 'confirmada')
+                `;
+
+                connection.query(checkDisponibilidadQuery, [espacioId, fecha], (err, conflictos) => {
+                    if (err) {
+                        console.error('Error verificando disponibilidad:', err);
+                        return res.status(500).json({
+                            error: 'Error al verificar disponibilidad'
+                        });
+                    }
+
+                    if (conflictos.length > 0) {
+                        return res.status(409).json({
+                            error: 'El espacio ya está reservado para esa fecha'
+                        });
+                    }
+
+                    // Crear la reserva
+                    const reservaQuery = `
+                        INSERT INTO reserva (fecha_reserva, estado, cantidad_personas, razon, cliente_id, espacio_id) 
+                        VALUES (?, 'pendiente', ?, ?, ?, ?)
+                    `;
+
+                    connection.query(reservaQuery, [fechaReserva, personas, razon, clienteId, espacioId], (err, reservaResult) => {
+                        if (err) {
+                            console.error('Error creando reserva:', err);
+                            return res.status(500).json({
+                                error: 'Error al crear la reserva',
+                                details: err.message
+                            });
+                        }
+
+                        const reservaId = reservaResult.insertId;
+                        console.log('Reserva pública creada con ID:', reservaId);
+
+                        // Agregar servicios si se seleccionaron
+                        if (servicios && servicios.length > 0) {
+                            const serviciosValidosPromises = servicios.map(servicioId => {
+                                return new Promise((resolve, reject) => {
+                                    connection.query('SELECT id FROM servicio WHERE id = ?', [servicioId], (err, servicioResults) => {
+                                        if (err) {
+                                            reject(err);
+                                        } else if (servicioResults.length === 0) {
+                                            console.warn(`Servicio con ID ${servicioId} no existe, se omite`);
+                                            resolve(null);
+                                        } else {
+                                            resolve(servicioId);
+                                        }
+                                    });
+                                });
+                            });
+
+                            Promise.all(serviciosValidosPromises)
+                                .then(serviciosValidos => {
+                                    const serviciosAInsertar = serviciosValidos.filter(id => id !== null);
+
+                                    if (serviciosAInsertar.length > 0) {
+                                        const serviciosValues = serviciosAInsertar.map(servicioId => [reservaId, servicioId]);
+                                        const insertServiciosQuery = 'INSERT INTO reserva_servicio (reserva_id, servicio_id) VALUES ?';
+
+                                        connection.query(insertServiciosQuery, [serviciosValues], (err) => {
+                                            if (err) {
+                                                console.error('Error agregando servicios:', err);
+                                            } else {
+                                                console.log(`${serviciosAInsertar.length} servicios agregados a la reserva ${reservaId}`);
+                                            }
+                                        });
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error validando servicios:', error);
+                                });
+                        }
+
+                        res.status(201).json({
+                            message: 'Reserva creada correctamente',
+                            reservaId: reservaId,
+                            clienteId: clienteId,
+                            espacioNombre: espacioResults[0].nombre,
+                            serviciosAgregados: servicios ? servicios.length : 0
+                        });
+                    });
+                });
+            });
+        };
+
+        if (clienteResults.length > 0) {
+            // Cliente ya existe
+            clienteId = clienteResults[0].id;
+            console.log('Cliente existente encontrado:', clienteId);
+            crearReservaFinal(clienteId);
+        } else {
+            // Crear nuevo cliente
+            const clienteQuery = 'INSERT INTO cliente (nombre, rut, correo, telefono) VALUES (?, ?, ?, ?)';
+            connection.query(clienteQuery, [nombre, rut, correo, contacto], (err, clienteResult) => {
+                if (err) {
+                    console.error('Error creando cliente:', err);
+                    return res.status(500).json({
+                        error: 'Error al crear cliente',
+                        details: err.message
+                    });
+                }
+
+                clienteId = clienteResult.insertId;
+                console.log('Nuevo cliente creado con ID:', clienteId);
+                crearReservaFinal(clienteId);
+            });
+        }
+    });
+});
 // Endpoint específico para crear reserva desde dashboard
 app.post('/crearReserva', (req, res) => {
     console.log('Endpoint POST /crearReserva llamado desde dashboard');
@@ -2190,6 +2353,53 @@ app.patch('/api/reservas/:id/estado', (req, res) => {
 
         console.log('Estado de reserva actualizado:', id, 'nuevo estado:', estado);
         res.status(200).json({ message: 'Estado actualizado correctamente' });
+    });
+});
+// Endpoint para eliminar una reserva
+app.delete('/api/reservas/:id', (req, res) => {
+    console.log('Endpoint DELETE /api/reservas llamado');
+
+    const { id } = req.params;
+
+    // Verificar si la reserva tiene pagos asociados
+    const checkPagosQuery = 'SELECT COUNT(*) as count FROM pago WHERE reserva_id = ?';
+
+    connection.query(checkPagosQuery, [id], (err, results) => {
+        if (err) {
+            console.error('Error al verificar pagos:', err);
+            return res.status(500).json({ error: 'Error al verificar pagos' });
+        }
+
+        if (results[0].count > 0) {
+            return res.status(409).json({
+                error: 'No se puede eliminar la reserva porque tiene pagos asociados'
+            });
+        }
+
+        // Primero eliminar los servicios asociados
+        connection.query('DELETE FROM reserva_servicio WHERE reserva_id = ?', [id], (err) => {
+            if (err) {
+                console.error('Error al eliminar servicios de la reserva:', err);
+                return res.status(500).json({ error: 'Error al eliminar servicios de la reserva' });
+            }
+
+            // Luego eliminar la reserva
+            const deleteQuery = 'DELETE FROM reserva WHERE id = ?';
+
+            connection.query(deleteQuery, [id], (err, result) => {
+                if (err) {
+                    console.error('Error al eliminar reserva:', err);
+                    return res.status(500).json({ error: 'Error al eliminar reserva' });
+                }
+
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ error: 'Reserva no encontrada' });
+                }
+
+                console.log('Reserva eliminada:', id);
+                res.status(200).json({ message: 'Reserva eliminada correctamente' });
+            });
+        });
     });
 });
 // ===== ENDPOINTS PARA REPORTES =====
