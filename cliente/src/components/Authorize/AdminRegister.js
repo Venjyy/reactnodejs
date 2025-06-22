@@ -37,12 +37,34 @@ function AdminRegister() {
 
     const handleSubmit = (e) => {
         e.preventDefault();
+
+        // Validación de campos vacíos
         if (!usuario.trim() || !pass.trim()) {
             setMensaje('Por favor complete todos los campos');
             setStatus('error');
             return;
         }
+
+        // Validación de longitud mínima de usuario
+        if (usuario.trim().length < 3) {
+            setMensaje('El usuario debe tener al menos 3 caracteres');
+            setStatus('error');
+            return;
+        }
+
+        // Validación de longitud mínima de contraseña
+        if (pass.length < 4) {
+            setMensaje('La contraseña debe tener al menos 4 caracteres');
+            setStatus('error');
+            return;
+        }
+
         crearUsuario();
+    };
+
+    const clearMessage = () => {
+        setMensaje('');
+        setStatus('');
     };
 
     return (
@@ -58,9 +80,13 @@ function AdminRegister() {
                             type="text"
                             id="usuario"
                             value={usuario}
-                            onChange={(e) => setUsuario(e.target.value)}
-                            placeholder="Ingrese nombre de usuario"
+                            onChange={(e) => {
+                                setUsuario(e.target.value);
+                                clearMessage();
+                            }}
+                            placeholder="Ingrese nombre de usuario (mínimo 3 caracteres)"
                             required
+                            autoComplete="username"
                         />
                     </div>
 
@@ -70,9 +96,13 @@ function AdminRegister() {
                             type="password"
                             id="pass"
                             value={pass}
-                            onChange={(e) => setPass(e.target.value)}
-                            placeholder="Ingrese contraseña"
+                            onChange={(e) => {
+                                setPass(e.target.value);
+                                clearMessage();
+                            }}
+                            placeholder="Ingrese contraseña (mínimo 4 caracteres)"
                             required
+                            autoComplete="new-password"
                         />
                     </div>
 
@@ -83,6 +113,9 @@ function AdminRegister() {
 
                 {mensaje && (
                     <div className={`message ${status === 'success' ? 'success-message' : 'error-message'}`}>
+                        <span className="message-icon">
+                            {status === 'success' ? '✅' : '❌'}
+                        </span>
                         {mensaje}
                     </div>
                 )}

@@ -59,7 +59,6 @@ function AdminLogin() {
             });
     };
 
-    // ...existing code...
     const handleSubmit = (e) => {
         e.preventDefault();
 

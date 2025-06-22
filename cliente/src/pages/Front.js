@@ -17,31 +17,110 @@ function Front() {
     const [horario, setHorario] = useState('');
     const [personas, setPersonas] = useState('');
     const [razon, setRazon] = useState('');
-    const [espacioId, setEspacioId] = useState('1');
+    const [espacioId, setEspacioId] = useState('');
     const [espacios, setEspacios] = useState([]);
     const [servicios, setServicios] = useState([]);
     const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
     const [mensaje, setMensaje] = useState('');
     const [status, setStatus] = useState('');
 
+    // Función para formatear RUT automáticamente
+    const formatearRut = (valor) => {
+        // Remover todos los caracteres que no sean números o K/k
+        const soloNumeros = valor.replace(/[^0-9kK]/g, '');
+
+        // Limitar a máximo 9 caracteres
+        if (soloNumeros.length > 9) {
+            return rut; // Retornar el valor anterior si excede 9 caracteres
+        }
+
+        if (soloNumeros.length === 0) return '';
+
+        // Separar números y dígito verificador
+        const cuerpo = soloNumeros.slice(0, -1);
+        const dv = soloNumeros.slice(-1);
+
+        // Formatear solo si hay al menos 2 caracteres
+        if (soloNumeros.length < 2) {
+            return soloNumeros;
+        }
+
+        // Agregar puntos cada 3 dígitos desde la derecha
+        let cuerpoFormateado = '';
+        for (let i = cuerpo.length - 1, j = 0; i >= 0; i--, j++) {
+            if (j > 0 && j % 3 === 0) {
+                cuerpoFormateado = '.' + cuerpoFormateado;
+            }
+            cuerpoFormateado = cuerpo[i] + cuerpoFormateado;
+        }
+
+        return cuerpoFormateado + '-' + dv.toUpperCase();
+    };
+
+    // Función para formatear número de contacto
+    const formatearContacto = (valor) => {
+        // Remover todo lo que no sean números
+        const soloNumeros = valor.replace(/\D/g, '');
+
+        // Si el usuario borra el prefijo, mantenerlo
+        if (soloNumeros.length === 0) {
+            return '+569 ';
+        }
+
+        // Si no comienza con 569, agregarlo
+        let numeroCompleto = soloNumeros;
+        if (!numeroCompleto.startsWith('569')) {
+            numeroCompleto = '569' + soloNumeros;
+        }
+
+        // Limitar a 11 dígitos (569 + 8 dígitos del número)
+        if (numeroCompleto.length > 11) {
+            numeroCompleto = numeroCompleto.substring(0, 11);
+        }
+
+        // Formatear como +569 XXXXXXXX
+        if (numeroCompleto.length > 3) {
+            const numero = numeroCompleto.substring(3);
+            return `+569 ${numero}`;
+        }
+
+        return '+569 ';
+    };
+
+    // Manejar cambios en el RUT
+    const handleRutChange = (e) => {
+        const valorFormateado = formatearRut(e.target.value);
+        setRut(valorFormateado);
+    };
+
+    // Manejar cambios en el contacto
+    const handleContactoChange = (e) => {
+        const valorFormateado = formatearContacto(e.target.value);
+        setContacto(valorFormateado);
+    };
+
     // Cargar espacios y servicios disponibles al cargar el componente
     useEffect(() => {
         // Aplicar imagen de fondo dinámicamente
         document.documentElement.style.setProperty('--hero-bg-image', `url(${bgImage})`);
 
-        // Cargar espacios
+        // Cargar espacios desde el backend
         Axios.get('http://localhost:3001/espacios')
             .then((response) => {
+                console.log('Espacios cargados:', response.data);
                 if (response.data.length > 0) {
                     setEspacios(response.data);
+                    // Establecer el primer espacio como seleccionado por defecto
                     setEspacioId(response.data[0].id.toString());
                 } else {
                     console.log('No hay espacios disponibles');
+                    // Si no hay espacios, crear uno por defecto
                     crearEspacioPorDefecto();
                 }
             })
             .catch((error) => {
                 console.error('Error al cargar espacios:', error);
+                // En caso de error, intentar crear un espacio por defecto
                 crearEspacioPorDefecto();
             });
 
@@ -63,6 +142,9 @@ function Front() {
                     }
                 ]);
             });
+
+        // Inicializar el contacto con el prefijo
+        setContacto('+569 ');
     }, []);
 
     // Función para crear un espacio por defecto si no existen
@@ -75,15 +157,26 @@ function Front() {
         })
             .then((response) => {
                 console.log('Espacio por defecto creado');
-                setEspacios([{
+                const nuevoEspacio = {
                     id: response.data.id,
                     nombre: 'Salón Principal',
-                    capacidad: 100
-                }]);
+                    capacidad: 100,
+                    costo_base: 50000
+                };
+                setEspacios([nuevoEspacio]);
                 setEspacioId(response.data.id.toString());
             })
             .catch((error) => {
                 console.error('Error al crear espacio por defecto:', error);
+                // Crear un espacio temporal para que la aplicación no falle
+                const espacioTemporal = {
+                    id: 1,
+                    nombre: 'Salón Principal (Temporal)',
+                    capacidad: 100,
+                    costo_base: 50000
+                };
+                setEspacios([espacioTemporal]);
+                setEspacioId('1');
             });
     };
 
@@ -99,7 +192,7 @@ function Front() {
     // Calcular costo total estimado
     const calcularCostoEstimado = () => {
         const espacioSeleccionado = espacios.find(e => e.id.toString() === espacioId);
-        const costoEspacio = espacioSeleccionado ? espacioSeleccionado.costo_base || 0 : 0;
+        const costoEspacio = espacioSeleccionado ? (espacioSeleccionado.costo_base || 0) : 0;
 
         const costoServicios = serviciosSeleccionados.reduce((total, servicioId) => {
             const servicio = servicios.find(s => s.id === servicioId);
@@ -109,8 +202,53 @@ function Front() {
         return costoEspacio + costoServicios;
     };
 
+    // Función para validar RUT
+    const validarRut = (rut) => {
+        // Remover puntos y guión
+        const rutLimpio = rut.replace(/[.-]/g, '');
+
+        // Debe tener entre 8 y 9 caracteres
+        if (rutLimpio.length < 8 || rutLimpio.length > 9) {
+            return false;
+        }
+
+        // El último caracter puede ser número o K
+        const dv = rutLimpio.slice(-1).toUpperCase();
+        if (!/[0-9K]/.test(dv)) {
+            return false;
+        }
+
+        return true;
+    };
+
+    // Función para validar contacto
+    const validarContacto = (contacto) => {
+        // Debe tener el formato +569 XXXXXXXX (exactamente 8 dígitos después del prefijo)
+        const regex = /^\+569 \d{8}$/;
+        return regex.test(contacto);
+    };
+
     // Función para enviar la reserva
     const crearReserva = () => {
+        // Validaciones antes de enviar
+        if (!validarRut(rut)) {
+            setMensaje('El RUT ingresado no es válido. Debe tener entre 8 y 9 dígitos.');
+            setStatus('error');
+            return;
+        }
+
+        if (!validarContacto(contacto)) {
+            setMensaje('El número de contacto debe tener exactamente 8 dígitos después del prefijo +569.');
+            setStatus('error');
+            return;
+        }
+
+        if (!espacioId) {
+            setMensaje('Debe seleccionar un espacio para la reserva.');
+            setStatus('error');
+            return;
+        }
+
         Axios.post('http://localhost:3001/api/reservas-publicas', {
             nombre: nombre,
             rut: rut,
@@ -121,7 +259,7 @@ function Front() {
             personas: personas,
             razon: razon,
             espacioId: espacioId,
-            servicios: serviciosSeleccionados // Agregar servicios seleccionados
+            servicios: serviciosSeleccionados
         })
             .then((res) => {
                 setMensaje('¡Reserva creada correctamente!');
@@ -130,12 +268,12 @@ function Front() {
                 setNombre('');
                 setRut('');
                 setCorreo('');
-                setContacto('');
+                setContacto('+569 '); // Resetear con el prefijo
                 setFecha('');
                 setHorario('');
                 setPersonas('');
                 setRazon('');
-                setEspacioId('1');
+                setEspacioId(espacios.length > 0 ? espacios[0].id.toString() : '');
                 setServiciosSeleccionados([]);
             })
             .catch((error) => {
@@ -245,10 +383,14 @@ function Front() {
                             type="text"
                             id="rut"
                             value={rut}
-                            onChange={(e) => setRut(e.target.value)}
+                            onChange={handleRutChange}
                             placeholder="12.345.678-9"
+                            maxLength="12"
                             required
                         />
+                        <small style={{ color: '#666', fontSize: '0.85em' }}>
+                            Formato: 12.345.678-9 (máximo 9 dígitos)
+                        </small>
                     </div>
 
                     <div className="form-group">
@@ -269,10 +411,14 @@ function Front() {
                             type="tel"
                             id="contacto"
                             value={contacto}
-                            onChange={(e) => setContacto(e.target.value)}
-                            placeholder="+56 9 1234 5678"
+                            onChange={handleContactoChange}
+                            placeholder="+569 12345678"
+                            maxLength="13"
                             required
                         />
+                        <small style={{ color: '#666', fontSize: '0.85em' }}>
+                            Formato: +569 XXXXXXXX (8 dígitos después del prefijo)
+                        </small>
                     </div>
 
                     <div className="form-group">
@@ -321,16 +467,13 @@ function Front() {
                             onChange={(e) => setEspacioId(e.target.value)}
                             required
                         >
-                            {espacios.length > 0 ? (
-                                espacios.map(espacio => (
-                                    <option key={espacio.id} value={espacio.id}>
-                                        {espacio.nombre} (Cap. {espacio.capacidad} personas)
-                                        {espacio.costo_base && ` - $${espacio.costo_base.toLocaleString()}`}
-                                    </option>
-                                ))
-                            ) : (
-                                <option value="1">Salón Principal (Predeterminado)</option>
-                            )}
+                            <option value="">Seleccione un espacio</option>
+                            {espacios.map(espacio => (
+                                <option key={espacio.id} value={espacio.id}>
+                                    {espacio.nombre} (Cap. {espacio.capacidad} personas)
+                                    {espacio.costo_base && ` - $${espacio.costo_base.toLocaleString()}`}
+                                </option>
+                            ))}
                         </select>
                     </div>
 
@@ -430,6 +573,7 @@ function Front() {
                 )}
             </section>
 
+            {/* ...existing code... */}
             {/* Conócenos - Completamente rediseñado */}
             <section id="conoce">
                 <div className="galeria-container">
