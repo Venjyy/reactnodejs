@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 import './Sections.css';
 
 function Clientes() {
@@ -28,9 +29,23 @@ function Clientes() {
                 setClientes(data);
             } else {
                 console.error('Error al cargar clientes:', response.status);
+                await Swal.fire({
+                    title: 'Error',
+                    text: 'Error al cargar la lista de clientes',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
             }
         } catch (error) {
             console.error('Error cargando clientes:', error);
+            await Swal.fire({
+                title: 'Error de conexión',
+                text: 'No se pudo conectar con el servidor',
+                icon: 'error',
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545'
+            });
         } finally {
             setLoading(false);
         }
@@ -60,39 +75,92 @@ function Clientes() {
                 body: JSON.stringify(formData)
             });
 
+            // Cerrar modal antes de mostrar cualquier alerta
+            closeModal();
+
             if (response.ok) {
-                const result = await response.json();
-                alert(result.message);
-                closeModal();
+                await Swal.fire({
+                    title: '¡Éxito!',
+                    text: selectedCliente ? 'Cliente actualizado exitosamente' : 'Cliente creado exitosamente',
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
                 loadClientes();
             } else {
                 const error = await response.json();
-                alert(`Error: ${error.error}`);
+                await Swal.fire({
+                    title: 'Error',
+                    text: error.error || 'No se pudo guardar el cliente',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
             }
         } catch (error) {
             console.error('Error al guardar cliente:', error);
-            alert('Error al guardar cliente');
+            closeModal();
+            await Swal.fire({
+                title: 'Error de conexión',
+                text: 'Error al guardar cliente. Verifique su conexión.',
+                icon: 'error',
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545'
+            });
         }
     };
 
     const handleDelete = async (clienteId) => {
-        if (window.confirm('¿Estás seguro de que deseas eliminar este cliente?')) {
+        const result = await Swal.fire({
+            title: '¿Eliminar cliente?',
+            text: '¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        });
+
+        if (result.isConfirmed) {
             try {
                 const response = await fetch(`http://localhost:3001/clientes/${clienteId}`, {
                     method: 'DELETE'
                 });
 
                 if (response.ok) {
-                    const result = await response.json();
-                    alert(result.message);
+                    await Swal.fire({
+                        title: '¡Eliminado!',
+                        text: 'El cliente ha sido eliminado exitosamente',
+                        icon: 'success',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#28a745',
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
                     loadClientes();
                 } else {
                     const error = await response.json();
-                    alert(`Error: ${error.error}`);
+                    await Swal.fire({
+                        title: 'Error al eliminar',
+                        text: error.error || 'No se pudo eliminar el cliente',
+                        icon: 'error',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#dc3545'
+                    });
                 }
             } catch (error) {
                 console.error('Error al eliminar cliente:', error);
-                alert('Error al eliminar cliente');
+                await Swal.fire({
+                    title: 'Error de conexión',
+                    text: 'Error al eliminar cliente. Verifique su conexión.',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
             }
         }
     };

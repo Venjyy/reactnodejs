@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import Swal from 'sweetalert2';
 import './Sections.css';
 
 function Dashboard() {
@@ -180,11 +181,15 @@ function Dashboard() {
             }
 
             if (tipo === 'pago') {
-                // Cargar reservas pendientes de pago
-                const reservasRes = await fetch(`${API_BASE_URL}/api/reservas`);
+                // Cargar reservas pendientes de pago usando el nuevo endpoint
+                const reservasRes = await fetch(`${API_BASE_URL}/dashboard/reservas-para-pagos`);
                 if (reservasRes.ok) {
                     const reservasData = await reservasRes.json();
-                    setReservasParaPago(reservasData.filter(r => r.estado === 'confirmada' || r.estado === 'pendiente'));
+                    console.log('Reservas para pago cargadas:', reservasData);
+                    setReservasParaPago(reservasData);
+                } else {
+                    console.error('Error al cargar reservas para pago');
+                    setReservasParaPago([]);
                 }
             }
         } catch (error) {
@@ -231,15 +236,21 @@ function Dashboard() {
 
     // Funciones para abrir modales
     const abrirModalNuevaReserva = async () => {
+        // Bloquear scroll del body
+        document.body.style.overflow = 'hidden';
         await loadModalData('reserva');
         setModalActivo('nuevaReserva');
     };
 
     const abrirModalNuevoCliente = () => {
+        // Bloquear scroll del body
+        document.body.style.overflow = 'hidden';
         setModalActivo('nuevoCliente');
     };
 
     const abrirModalRegistrarPago = async () => {
+        // Bloquear scroll del body
+        document.body.style.overflow = 'hidden';
         await loadModalData('pago');
         setModalActivo('registrarPago');
     };
@@ -250,6 +261,9 @@ function Dashboard() {
     };
 
     const cerrarModal = () => {
+        // Restaurar scroll del body
+        document.body.style.overflow = 'unset';
+
         setModalActivo(null);
         // Limpiar formularios
         setFormCliente({ nombre: '', rut: '', correo: '', telefono: '' });
@@ -282,17 +296,40 @@ function Dashboard() {
                 body: JSON.stringify(formCliente)
             });
 
+            // Cerrar modal antes de mostrar alertas (esto restaurará el scroll)
+            cerrarModal();
+
             if (response.ok) {
-                alert('Cliente creado exitosamente');
-                cerrarModal();
+                await Swal.fire({
+                    title: '¡Éxito!',
+                    text: 'Cliente creado exitosamente',
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
                 loadDashboardData();
             } else {
                 const error = await response.json();
-                alert(`Error: ${error.message || 'No se pudo crear el cliente'}`);
+                await Swal.fire({
+                    title: 'Error',
+                    text: error.message || 'No se pudo crear el cliente',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error al crear cliente');
+            cerrarModal();
+            await Swal.fire({
+                title: 'Error de conexión',
+                text: 'Error al crear cliente. Verifique su conexión.',
+                icon: 'error',
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545'
+            });
         }
     };
 
@@ -313,17 +350,41 @@ function Dashboard() {
                 })
             });
 
+            // Cerrar el modal ANTES de mostrar cualquier alerta (esto restaurará el scroll)
+            cerrarModal();
+
             if (response.ok) {
-                alert('Reserva creada exitosamente');
-                cerrarModal();
+                await Swal.fire({
+                    title: '¡Reserva Creada!',
+                    text: 'La reserva se ha creado exitosamente',
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
                 loadDashboardData();
             } else {
                 const error = await response.json();
-                alert(`Error: ${error.error || 'No se pudo crear la reserva'}`);
+                await Swal.fire({
+                    title: 'Error al crear reserva',
+                    text: error.error || 'No se pudo crear la reserva',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error al crear reserva');
+            // Asegurar que el modal esté cerrado también en caso de error (esto restaurará el scroll)
+            cerrarModal();
+            await Swal.fire({
+                title: 'Error de conexión',
+                text: 'Error al crear reserva. Verifique su conexión.',
+                icon: 'error',
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545'
+            });
         }
     };
 
@@ -342,19 +403,51 @@ function Dashboard() {
                 })
             });
 
+            // Cerrar modal antes de mostrar alertas (esto restaurará el scroll)
+            cerrarModal();
+
             if (response.ok) {
-                alert('Pago registrado exitosamente');
-                cerrarModal();
+                await Swal.fire({
+                    title: '¡Pago Registrado!',
+                    text: 'El pago se ha registrado exitosamente',
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
                 loadDashboardData();
             } else {
                 const error = await response.json();
-                alert(`Error: ${error.message || 'No se pudo registrar el pago'}`);
+                await Swal.fire({
+                    title: 'Error al registrar pago',
+                    text: error.message || 'No se pudo registrar el pago',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
             }
         } catch (error) {
             console.error('Error:', error);
-            alert('Error al registrar pago');
+            cerrarModal();
+            await Swal.fire({
+                title: 'Error de conexión',
+                text: 'Error al registrar pago. Verifique su conexión.',
+                icon: 'error',
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545'
+            });
         }
     };
+
+    // Efecto para limpiar el scroll al desmontar el componente
+    useEffect(() => {
+        return () => {
+            // Asegurar que el scroll se restaure al desmontar el componente
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
+
 
     if (loading) {
         return (
@@ -445,16 +538,24 @@ function Dashboard() {
                                                 <div className="client-avatar">
                                                     {getClienteIniciales(reserva.cliente_nombre)}
                                                 </div>
-                                                <div>
-                                                    <strong>{reserva.cliente_nombre}</strong>
-                                                    <small>{reserva.espacio_nombre} - {reserva.razon}</small>
+                                                <div className="client-details">
+                                                    <div className="client-name">
+                                                        {reserva.cliente_nombre}
+                                                    </div>
+                                                    <div className="booking-details">
+                                                        {reserva.espacio_nombre} • {reserva.razon}
+                                                    </div>
+                                                    <div className="booking-date">
+                                                        {formatFecha(reserva.fecha_reserva)}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <small>{formatFecha(reserva.fecha_reserva)}</small>
                                         </div>
-                                        <span className={`badge ${getEstadoBadge(reserva.estado)}`}>
-                                            {reserva.estado.charAt(0).toUpperCase() + reserva.estado.slice(1)}
-                                        </span>
+                                        <div className="booking-status">
+                                            <span className={`badge ${getEstadoBadge(reserva.estado)}`}>
+                                                {reserva.estado.charAt(0).toUpperCase() + reserva.estado.slice(1)}
+                                            </span>
+                                        </div>
                                     </div>
                                 ))
                             ) : (

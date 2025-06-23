@@ -163,4 +163,46 @@ router.get('/espacios-ranking', (req, res) => {
     });
 });
 
+// NUEVO ENDPOINT: Reservas para pagos
+router.get('/reservas-para-pagos', (req, res) => {
+    console.log('Endpoint /dashboard/reservas-para-pagos llamado');
+
+    const reservasParaPagoQuery = `
+        SELECT 
+            r.id,
+            r.fecha_reserva,
+            r.estado,
+            r.razon,
+            c.nombre as cliente_nombre,
+            e.nombre as espacio_nombre,
+            e.costo_base,
+            DATE_FORMAT(r.fecha_reserva, '%Y-%m-%d %H:%i:%s') as fecha_reserva_formateada
+        FROM reserva r
+        JOIN cliente c ON r.cliente_id = c.id
+        JOIN espacio e ON r.espacio_id = e.id
+        WHERE r.estado IN ('confirmada', 'pendiente')
+        ORDER BY r.fecha_reserva ASC
+    `;
+
+    connection.query(reservasParaPagoQuery, (err, results) => {
+        if (err) {
+            console.error('Error en consulta de reservas para pago:', err);
+            res.status(500).json({
+                error: 'Error al obtener reservas para pago',
+                details: err.message
+            });
+            return;
+        }
+
+        // Formatear las fechas para asegurar compatibilidad
+        const reservasFormateadas = results.map(reserva => ({
+            ...reserva,
+            fecha_reserva: reserva.fecha_reserva_formateada || reserva.fecha_reserva
+        }));
+
+        console.log('Reservas para pago obtenidas:', reservasFormateadas.length);
+        res.json(reservasFormateadas);
+    });
+});
+
 module.exports = router;
