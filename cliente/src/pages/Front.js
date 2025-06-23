@@ -409,7 +409,7 @@ function Front() {
                         <label htmlFor="contacto">Número de contacto</label>
                         <input
                             type="tel"
-                            id="contacto"
+                            id="numero-contacto"  // Cambiar este ID
                             value={contacto}
                             onChange={handleContactoChange}
                             placeholder="+569 12345678"
