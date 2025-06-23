@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Swal from 'sweetalert2';
 import './Sections.css';
 
 function Pagos() {
@@ -9,7 +10,6 @@ function Pagos() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedPago, setSelectedPago] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState('');
     const [stats, setStats] = useState({
         totalIngresos: 0,
         totalTransacciones: 0,
@@ -51,15 +51,38 @@ function Pagos() {
         { value: 'rechazado', label: 'Rechazado', color: 'danger' }
     ];
 
+    // Efecto para controlar el scroll del body cuando el modal está abierto
     useEffect(() => {
-        loadPagos();
-        loadReservas();
-        loadEstadisticas();
+        if (isModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isModalOpen]);
+
+    // Función helper para mostrar alertas con configuración consistente
+    const showAlert = useCallback((config) => {
+        document.body.style.overflow = 'hidden';
+
+        return Swal.fire({
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                document.body.style.overflow = 'hidden';
+            },
+            willClose: () => {
+                document.body.style.overflow = 'unset';
+            },
+            ...config
+        });
     }, []);
 
-    const loadPagos = async () => {
+    const loadPagos = useCallback(async () => {
         setLoading(true);
-        setError('');
         try {
             console.log('Intentando cargar pagos desde:', `${API_BASE_URL}/api/pagos`);
             const response = await fetch(`${API_BASE_URL}/api/pagos`);
@@ -67,31 +90,44 @@ function Pagos() {
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Error response:', errorText);
-                throw new Error(`Error ${response.status}: ${response.statusText}`);
+                await showAlert({
+                    title: 'Error al cargar pagos',
+                    text: `Error ${response.status}: ${response.statusText}`,
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
+                setPagos([]);
+                return;
             }
 
             const data = await response.json();
             setPagos(data);
             console.log('Pagos cargados exitosamente:', data);
-            setError(''); // Limpiar error si la carga fue exitosa
         } catch (error) {
             console.error('Error cargando pagos:', error);
-            setError('No se pudieron cargar los pagos. Verificando conexión...');
-
-            // No usar datos mock, dejar vacío
+            await showAlert({
+                title: 'Error de conexión',
+                text: 'No se pudo conectar con el servidor para cargar los pagos',
+                icon: 'error',
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545'
+            });
             setPagos([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, [showAlert]);
 
-    const loadReservas = async () => {
+    const loadReservas = useCallback(async () => {
         try {
             console.log('Intentando cargar reservas desde:', `${API_BASE_URL}/api/reservas-para-pagos`);
             const response = await fetch(`${API_BASE_URL}/api/reservas-para-pagos`);
 
             if (!response.ok) {
-                throw new Error(`Error ${response.status}: ${response.statusText}`);
+                console.error('Error al cargar reservas:', response.statusText);
+                setReservas([]);
+                return;
             }
 
             const data = await response.json();
@@ -101,15 +137,22 @@ function Pagos() {
             console.error('Error cargando reservas:', error);
             setReservas([]);
         }
-    };
+    }, []);
 
-    const loadEstadisticas = async () => {
+    const loadEstadisticas = useCallback(async () => {
         try {
             console.log('Intentando cargar estadísticas desde:', `${API_BASE_URL}/api/pagos/estadisticas`);
             const response = await fetch(`${API_BASE_URL}/api/pagos/estadisticas`);
 
             if (!response.ok) {
-                throw new Error(`Error ${response.status}: ${response.statusText}`);
+                console.error('Error al cargar estadísticas:', response.statusText);
+                setStats({
+                    totalIngresos: 0,
+                    totalTransacciones: 0,
+                    pagosHoy: 0,
+                    pagosPendientes: 0
+                });
+                return;
             }
 
             const data = await response.json();
@@ -124,7 +167,13 @@ function Pagos() {
                 pagosPendientes: 0
             });
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadPagos();
+        loadReservas();
+        loadEstadisticas();
+    }, [loadPagos, loadReservas, loadEstadisticas]);
 
     const handleInputChange = (e) => {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -134,10 +183,84 @@ function Pagos() {
         });
     };
 
+    // Función para comparar cambios en edición
+    const getChanges = (original, updated) => {
+        const changes = [];
+        const fieldsToCompare = {
+            reservaId: 'Reserva',
+            monto: 'Monto',
+            metodoPago: 'Método de Pago',
+            fechaPago: 'Fecha de Pago',
+            tipoPago: 'Tipo de Pago',
+            comprobante: 'Comprobante',
+            observaciones: 'Observaciones'
+        };
+
+        Object.keys(fieldsToCompare).forEach(field => {
+            let originalValue = original[field];
+            let updatedValue = updated[field];
+
+            // Normalizar fechas para comparación correcta
+            if (field === 'fechaPago') {
+                // Convertir ambas fechas al formato YYYY-MM-DD para comparar
+                if (originalValue) {
+                    if (originalValue instanceof Date) {
+                        originalValue = originalValue.toISOString().split('T')[0];
+                    } else if (typeof originalValue === 'string') {
+                        // Si viene como timestamp "2025-06-10T00:00:00.000Z", extraer solo la fecha
+                        if (originalValue.includes('T')) {
+                            originalValue = originalValue.split('T')[0];
+                        }
+                        // Si ya está en formato YYYY-MM-DD, mantenerla
+                        if (originalValue.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                            // Ya está en el formato correcto
+                        }
+                    }
+                }
+
+                if (updatedValue) {
+                    if (updatedValue instanceof Date) {
+                        updatedValue = updatedValue.toISOString().split('T')[0];
+                    } else if (typeof updatedValue === 'string') {
+                        // Si viene como timestamp, extraer solo la fecha
+                        if (updatedValue.includes('T')) {
+                            updatedValue = updatedValue.split('T')[0];
+                        }
+                    }
+                }
+            }
+
+            // Comparar valores normalizados
+            if (originalValue !== updatedValue) {
+                if (field === 'reservaId') {
+                    const reservaOriginal = reservas.find(r => r.id === originalValue);
+                    const reservaNueva = reservas.find(r => r.id === updatedValue);
+                    const nombreOriginal = reservaOriginal ? `${reservaOriginal.clienteNombre} - ${reservaOriginal.espacioNombre}` : 'No especificada';
+                    const nombreNuevo = reservaNueva ? `${reservaNueva.clienteNombre} - ${reservaNueva.espacioNombre}` : 'No especificada';
+                    changes.push(`${fieldsToCompare[field]}: "${nombreOriginal}" → "${nombreNuevo}"`);
+                } else if (field === 'monto') {
+                    changes.push(`${fieldsToCompare[field]}: $${Number(originalValue).toLocaleString()} → $${Number(updatedValue).toLocaleString()}`);
+                } else if (field === 'fechaPago') {
+                    // Usar las fechas normalizadas para mostrar el cambio
+                    const fechaOriginal = originalValue ? new Date(originalValue + 'T00:00:00').toLocaleDateString('es-CL') : 'No especificada';
+                    const fechaNueva = updatedValue ? new Date(updatedValue + 'T00:00:00').toLocaleDateString('es-CL') : 'No especificada';
+                    changes.push(`${fieldsToCompare[field]}: "${fechaOriginal}" → "${fechaNueva}"`);
+                } else if (field === 'tipoPago') {
+                    const tipoOriginal = tiposPago.find(t => t.value === originalValue)?.label || originalValue;
+                    const tipoNuevo = tiposPago.find(t => t.value === updatedValue)?.label || updatedValue;
+                    changes.push(`${fieldsToCompare[field]}: "${tipoOriginal}" → "${tipoNuevo}"`);
+                } else {
+                    changes.push(`${fieldsToCompare[field]}: "${originalValue || 'Sin definir'}" → "${updatedValue || 'Sin definir'}"`);
+                }
+            }
+        });
+
+        return changes;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
-        setError('');
 
         try {
             const url = selectedPago
@@ -156,42 +279,231 @@ function Pagos() {
                     monto: parseFloat(formData.monto),
                     metodoPago: formData.metodoPago,
                     fechaPago: formData.fechaPago,
+                    tipoPago: formData.tipoPago,
+                    comprobante: formData.comprobante,
                     observaciones: formData.observaciones
                 })
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al guardar pago');
+                console.error('Error al guardar pago:', errorData.error);
+                closeModal();
+                await showAlert({
+                    title: 'Error al guardar',
+                    text: errorData.error || 'No se pudo guardar el pago',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
+                return;
             }
 
             const result = await response.json();
             console.log(selectedPago ? 'Pago actualizado:' : 'Pago creado:', result);
-
             closeModal();
+
+            if (selectedPago) {
+                // Es una edición - mostrar cambios realizados
+                const changes = getChanges(selectedPago, formData);
+
+                if (changes.length > 0) {
+                    await showAlert({
+                        title: '¡Pago Actualizado!',
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>Los siguientes cambios han sido guardados:</strong></p>
+                                <ul style="margin: 10px 0; padding-left: 20px;">
+                                    ${changes.map(change => `<li>${change}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `,
+                        icon: 'success',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#28a745',
+                        timer: 5000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    await showAlert({
+                        title: 'Sin cambios',
+                        text: 'No se detectaron cambios en el pago',
+                        icon: 'info',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#17a2b8',
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            } else {
+                // Es una creación
+                const reserva = reservas.find(r => r.id === parseInt(formData.reservaId));
+                const tipoPago = tiposPago.find(t => t.value === formData.tipoPago);
+
+                await showAlert({
+                    title: '¡Pago Registrado!',
+                    html: `
+                        <div style="text-align: left;">
+                            <p><strong>Nuevo pago registrado exitosamente:</strong></p>
+                            <ul style="margin: 10px 0; padding-left: 20px;">
+                                <li>Cliente: ${reserva?.clienteNombre || 'No especificado'}</li>
+                                <li>Espacio: ${reserva?.espacioNombre || 'No especificado'}</li>
+                                <li>Monto: $${Number(formData.monto).toLocaleString()}</li>
+                                <li>Método: ${formData.metodoPago}</li>
+                                <li>Fecha: ${new Date(formData.fechaPago).toLocaleDateString('es-CL')}</li>
+                                <li>Tipo: ${tipoPago?.label || 'Abono'}</li>
+                                ${formData.comprobante ? `<li>Comprobante: ${formData.comprobante}</li>` : ''}
+                                ${reserva ? `<li>Saldo Restante: $${(reserva.saldoPendiente - Number(formData.monto)).toLocaleString()}</li>` : ''}
+                            </ul>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 5000,
+                    timerProgressBar: true
+                });
+            }
+
             await loadPagos();
             await loadReservas();
             await loadEstadisticas();
 
         } catch (error) {
             console.error('Error al guardar pago:', error);
-            setError(error.message || 'Error al guardar el pago');
+            closeModal();
+            await showAlert({
+                title: 'Error de conexión',
+                text: 'Error al guardar el pago. Verifique su conexión.',
+                icon: 'error',
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545'
+            });
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async (id, clienteNombre, monto, fechaPago) => {
+        const result = await showAlert({
+            title: '¿Eliminar pago?',
+            html: `
+                <div style="text-align: left;">
+                    <p>¿Estás seguro de que deseas eliminar este pago?</p>
+                    <div style="margin: 15px 0; padding: 10px; background-color: #fff3cd; border-radius: 4px; border-left: 4px solid #ffc107;">
+                        <strong>⚠️ Esta acción no se puede deshacer</strong>
+                        <ul style="margin: 8px 0; padding-left: 20px;">
+                            <li>Cliente: <strong>${clienteNombre}</strong></li>
+                            <li>Monto: <strong style="color: #dc3545;">$${monto.toLocaleString()}</strong></li>
+                            <li>Fecha: ${new Date(fechaPago).toLocaleDateString('es-CL')}</li>
+                            <li>Se eliminará permanentemente el registro</li>
+                        </ul>
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        });
+
+        if (result.isConfirmed) {
+            setLoading(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/pagos/${id}`, {
+                    method: 'DELETE'
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Error al eliminar pago:', errorData.error);
+                    await showAlert({
+                        title: 'Error al eliminar',
+                        text: errorData.error || 'No se pudo eliminar el pago',
+                        icon: 'error',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#dc3545'
+                    });
+                    return;
+                }
+
+                console.log('Pago eliminado:', id);
+
+                await showAlert({
+                    title: '¡Pago Eliminado!',
+                    html: `
+                        <div style="text-align: center;">
+                            <p>El pago de <strong>"${clienteNombre}"</strong> por <strong>$${monto.toLocaleString()}</strong> ha sido eliminado exitosamente.</p>
+                            <div style="margin-top: 15px; padding: 10px; background-color: #d4edda; border-radius: 4px;">
+                                <small>✅ El registro ha sido removido del sistema</small>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+
+                await loadPagos();
+                await loadReservas();
+                await loadEstadisticas();
+
+            } catch (error) {
+                console.error('Error al eliminar pago:', error);
+                await showAlert({
+                    title: 'Error de conexión',
+                    text: 'Error al eliminar el pago. Verifique su conexión.',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
     const openModal = (pago = null) => {
         if (pago) {
             setSelectedPago(pago);
+
+            // Formatear la fecha correctamente para el input date
+            let fechaFormateada = '';
+            if (pago.fechaPago) {
+                if (typeof pago.fechaPago === 'string') {
+                    // Si viene como timestamp "2025-06-10T00:00:00.000Z"
+                    if (pago.fechaPago.includes('T')) {
+                        fechaFormateada = pago.fechaPago.split('T')[0];
+                    }
+                    // Si ya viene como "2025-06-10"
+                    else if (pago.fechaPago.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        fechaFormateada = pago.fechaPago;
+                    }
+                    // Si viene en otro formato, intentar convertir
+                    else {
+                        const fecha = new Date(pago.fechaPago);
+                        if (!isNaN(fecha.getTime())) {
+                            fechaFormateada = fecha.toISOString().split('T')[0];
+                        }
+                    }
+                } else if (pago.fechaPago instanceof Date) {
+                    fechaFormateada = pago.fechaPago.toISOString().split('T')[0];
+                }
+            }
+
             setFormData({
                 reservaId: pago.reservaId,
                 monto: pago.monto,
                 metodoPago: pago.metodoPago,
-                fechaPago: pago.fechaPago.split('T')[0], // Formatear fecha
+                fechaPago: fechaFormateada,
                 tipoPago: pago.tipoPago,
-                comprobante: pago.comprobante,
-                observaciones: pago.observaciones
+                comprobante: pago.comprobante || '',
+                observaciones: pago.observaciones || ''
             });
         } else {
             setSelectedPago(null);
@@ -205,49 +517,18 @@ function Pagos() {
                 observaciones: ''
             });
         }
-        setError('');
         setIsModalOpen(true);
     };
 
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedPago(null);
-        setError('');
-    };
-
-    const handleDelete = async (id) => {
-        if (!window.confirm('¿Está seguro de que desea eliminar este pago?')) {
-            return;
-        }
-
-        setLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/pagos/${id}`, {
-                method: 'DELETE'
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al eliminar pago');
-            }
-
-            console.log('Pago eliminado:', id);
-            await loadPagos();
-            await loadReservas();
-            await loadEstadisticas();
-
-        } catch (error) {
-            console.error('Error al eliminar pago:', error);
-            setError(error.message || 'Error al eliminar el pago');
-        } finally {
-            setLoading(false);
-        }
     };
 
     const filteredPagos = pagos.filter(pago => {
-        const matchesSearch = pago.clienteNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            pago.espacioNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (pago.comprobante && pago.comprobante.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchesSearch = (pago.clienteNombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (pago.espacioNombre || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (pago.comprobante || '').toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesStatus = filterStatus === 'todos' || pago.estado === filterStatus;
 
@@ -267,19 +548,6 @@ function Pagos() {
 
     return (
         <div className="section-container">
-            {error && (
-                <div className="error-message" style={{
-                    backgroundColor: '#fff3cd',
-                    color: '#856404',
-                    padding: '10px',
-                    borderRadius: '4px',
-                    marginBottom: '20px',
-                    border: '1px solid #ffeaa7'
-                }}>
-                    ⚠️ {error}
-                </div>
-            )}
-
             <div className="section-header">
                 <div className="header-content">
                     <h1>
@@ -375,21 +643,21 @@ function Pagos() {
                                 <tr key={pago.id}>
                                     <td>
                                         <div>
-                                            <strong>{pago.clienteNombre}</strong>
+                                            <strong>{pago.clienteNombre || 'Cliente no disponible'}</strong>
                                             <br />
-                                            <small>{pago.espacioNombre}</small>
+                                            <small>{pago.espacioNombre || 'Espacio no disponible'}</small>
                                             <br />
-                                            <small>Evento: {new Date(pago.fechaEvento).toLocaleDateString()}</small>
+                                            <small>Evento: {pago.fechaEvento ? new Date(pago.fechaEvento).toLocaleDateString('es-CL') : 'Sin fecha'}</small>
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>${pago.monto.toLocaleString()}</strong>
+                                        <strong>${(pago.monto || 0).toLocaleString()}</strong>
                                         <br />
-                                        <small>Total: ${pago.costoTotal.toLocaleString()}</small>
+                                        <small>Total: ${(pago.costoTotal || 0).toLocaleString()}</small>
                                     </td>
                                     <td>
                                         <div>
-                                            {pago.metodoPago}
+                                            {pago.metodoPago || 'Efectivo'}
                                             <br />
                                             {pago.comprobante && (
                                                 <small>#{pago.comprobante}</small>
@@ -397,7 +665,7 @@ function Pagos() {
                                         </div>
                                     </td>
                                     <td>
-                                        {new Date(pago.fechaPago).toLocaleDateString()}
+                                        {pago.fechaPago ? new Date(pago.fechaPago).toLocaleDateString('es-CL') : 'Sin fecha'}
                                     </td>
                                     <td>
                                         <span className="badge badge-info">
@@ -410,8 +678,8 @@ function Pagos() {
                                         </span>
                                     </td>
                                     <td>
-                                        <strong className={pago.saldoPendiente > 0 ? 'text-danger' : 'text-success'}>
-                                            ${pago.saldoPendiente.toLocaleString()}
+                                        <strong className={(pago.saldoPendiente || 0) > 0 ? 'text-danger' : 'text-success'}>
+                                            ${(pago.saldoPendiente || 0).toLocaleString()}
                                         </strong>
                                     </td>
                                     <td>
@@ -420,14 +688,20 @@ function Pagos() {
                                                 className="btn-edit"
                                                 onClick={() => openModal(pago)}
                                                 disabled={loading}
+                                                title="Editar pago"
                                             >
                                                 ✏️
                                             </button>
                                             <button
-                                                className="btn-secondary"
-                                                onClick={() => handleDelete(pago.id)}
+                                                className="btn-delete"
+                                                onClick={() => handleDelete(
+                                                    pago.id,
+                                                    pago.clienteNombre,
+                                                    pago.monto,
+                                                    pago.fechaPago
+                                                )}
                                                 disabled={loading}
-                                                style={{ backgroundColor: '#dc3545', color: 'white' }}
+                                                title="Eliminar pago"
                                             >
                                                 🗑️
                                             </button>
@@ -443,13 +717,11 @@ function Pagos() {
                     <div className="empty-state">
                         <h3>No se encontraron pagos</h3>
                         <p>
-                            {error
-                                ? 'Hay un problema de conexión con el servidor.'
-                                : searchTerm
-                                    ? 'No hay pagos que coincidan con la búsqueda.'
-                                    : 'No hay pagos registrados en la base de datos.'}
+                            {searchTerm || filterStatus !== 'todos'
+                                ? 'No hay pagos que coincidan con los filtros aplicados.'
+                                : 'No hay pagos registrados en el sistema.'}
                         </p>
-                        {!searchTerm && !error && (
+                        {!searchTerm && filterStatus === 'todos' && (
                             <button className="btn-primary" onClick={() => openModal()}>
                                 Registrar primer pago
                             </button>
@@ -468,17 +740,6 @@ function Pagos() {
                         </div>
                         <form onSubmit={handleSubmit}>
                             <div className="modal-body">
-                                {error && (
-                                    <div className="error-message" style={{
-                                        backgroundColor: '#ffebee',
-                                        color: '#c62828',
-                                        padding: '10px',
-                                        borderRadius: '4px',
-                                        marginBottom: '15px'
-                                    }}>
-                                        {error}
-                                    </div>
-                                )}
                                 <div className="form-row">
                                     <div className="form-group">
                                         <label>Reserva</label>
@@ -493,8 +754,8 @@ function Pagos() {
                                             {reservas.map(reserva => (
                                                 <option key={reserva.id} value={reserva.id}>
                                                     {reserva.clienteNombre} - {reserva.espacioNombre}
-                                                    ({new Date(reserva.fechaEvento).toLocaleDateString()})
-                                                    - Saldo: ${reserva.saldoPendiente.toLocaleString()}
+                                                    ({reserva.fechaEvento ? new Date(reserva.fechaEvento).toLocaleDateString('es-CL') : 'Sin fecha'})
+                                                    - Saldo: ${(reserva.saldoPendiente || 0).toLocaleString()}
                                                 </option>
                                             ))}
                                         </select>

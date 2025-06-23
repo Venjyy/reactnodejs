@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import './Sections.css';
 
@@ -15,11 +15,62 @@ function Clientes() {
         telefono: ''
     });
 
+    // Configuración global de SweetAlert2 para bloquear scroll
     useEffect(() => {
-        loadClientes();
+        // Configurar SweetAlert2 para que bloquee el scroll cuando se abra
+        const originalDidOpen = Swal.getDidOpen;
+        const originalWillClose = Swal.getWillClose;
+
+        Swal.mixin({
+            didOpen: () => {
+                document.body.style.overflow = 'hidden';
+                if (originalDidOpen) originalDidOpen();
+            },
+            willClose: () => {
+                document.body.style.overflow = 'unset';
+                if (originalWillClose) originalWillClose();
+            }
+        });
+
+        return () => {
+            // Cleanup al desmontar
+            document.body.style.overflow = 'unset';
+        };
     }, []);
 
-    const loadClientes = async () => {
+    // Efecto para controlar el scroll del body cuando el modal está abierto
+    useEffect(() => {
+        if (isModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+
+        // Cleanup: restaurar el scroll cuando el componente se desmonte
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isModalOpen]);
+
+    // Función helper para mostrar alertas con configuración consistente
+    const showAlert = useCallback((config) => {
+        // Bloquear scroll antes de mostrar la alerta
+        document.body.style.overflow = 'hidden';
+
+        return Swal.fire({
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                document.body.style.overflow = 'hidden';
+            },
+            willClose: () => {
+                document.body.style.overflow = 'unset';
+            },
+            ...config
+        });
+    }, []);
+
+    const loadClientes = useCallback(async () => {
         try {
             setLoading(true);
             const response = await fetch('http://localhost:3001/clientes');
@@ -29,7 +80,7 @@ function Clientes() {
                 setClientes(data);
             } else {
                 console.error('Error al cargar clientes:', response.status);
-                await Swal.fire({
+                await showAlert({
                     title: 'Error',
                     text: 'Error al cargar la lista de clientes',
                     icon: 'error',
@@ -39,7 +90,7 @@ function Clientes() {
             }
         } catch (error) {
             console.error('Error cargando clientes:', error);
-            await Swal.fire({
+            await showAlert({
                 title: 'Error de conexión',
                 text: 'No se pudo conectar con el servidor',
                 icon: 'error',
@@ -49,7 +100,11 @@ function Clientes() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [showAlert]);
+
+    useEffect(() => {
+        loadClientes();
+    }, [loadClientes]);
 
     const handleInputChange = (e) => {
         setFormData({
@@ -79,7 +134,7 @@ function Clientes() {
             closeModal();
 
             if (response.ok) {
-                await Swal.fire({
+                await showAlert({
                     title: '¡Éxito!',
                     text: selectedCliente ? 'Cliente actualizado exitosamente' : 'Cliente creado exitosamente',
                     icon: 'success',
@@ -91,7 +146,7 @@ function Clientes() {
                 loadClientes();
             } else {
                 const error = await response.json();
-                await Swal.fire({
+                await showAlert({
                     title: 'Error',
                     text: error.error || 'No se pudo guardar el cliente',
                     icon: 'error',
@@ -102,7 +157,7 @@ function Clientes() {
         } catch (error) {
             console.error('Error al guardar cliente:', error);
             closeModal();
-            await Swal.fire({
+            await showAlert({
                 title: 'Error de conexión',
                 text: 'Error al guardar cliente. Verifique su conexión.',
                 icon: 'error',
@@ -113,7 +168,7 @@ function Clientes() {
     };
 
     const handleDelete = async (clienteId) => {
-        const result = await Swal.fire({
+        const result = await showAlert({
             title: '¿Eliminar cliente?',
             text: '¿Estás seguro de que deseas eliminar este cliente? Esta acción no se puede deshacer.',
             icon: 'warning',
@@ -132,7 +187,7 @@ function Clientes() {
                 });
 
                 if (response.ok) {
-                    await Swal.fire({
+                    await showAlert({
                         title: '¡Eliminado!',
                         text: 'El cliente ha sido eliminado exitosamente',
                         icon: 'success',
@@ -144,7 +199,7 @@ function Clientes() {
                     loadClientes();
                 } else {
                     const error = await response.json();
-                    await Swal.fire({
+                    await showAlert({
                         title: 'Error al eliminar',
                         text: error.error || 'No se pudo eliminar el cliente',
                         icon: 'error',
@@ -154,7 +209,7 @@ function Clientes() {
                 }
             } catch (error) {
                 console.error('Error al eliminar cliente:', error);
-                await Swal.fire({
+                await showAlert({
                     title: 'Error de conexión',
                     text: 'Error al eliminar cliente. Verifique su conexión.',
                     icon: 'error',
@@ -189,6 +244,12 @@ function Clientes() {
     const closeModal = () => {
         setIsModalOpen(false);
         setSelectedCliente(null);
+        setFormData({
+            nombre: '',
+            rut: '',
+            correo: '',
+            telefono: ''
+        });
     };
 
     const formatearFecha = (fechaString) => {
@@ -361,7 +422,15 @@ function Clientes() {
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="modal-overlay">
+                <div
+                    className="modal-overlay"
+                    onClick={(e) => {
+                        // Solo cerrar si se hace click en el overlay, no en el contenido del modal
+                        if (e.target === e.currentTarget) {
+                            closeModal();
+                        }
+                    }}
+                >
                     <div className="modal modal-large">
                         <div className="modal-header">
                             <h2>{selectedCliente ? 'Editar Cliente' : 'Nuevo Cliente'}</h2>

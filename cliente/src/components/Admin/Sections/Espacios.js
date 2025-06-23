@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import Swal from 'sweetalert2';
 import './Sections.css';
 
 function Espacios() {
@@ -35,11 +36,37 @@ function Espacios() {
 
     const API_BASE_URL = 'http://localhost:3001';
 
+    // Efecto para controlar el scroll del body cuando el modal está abierto
     useEffect(() => {
-        loadEspacios();
+        if (isModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [isModalOpen]);
+
+    // Función helper para mostrar alertas con configuración consistente
+    const showAlert = useCallback((config) => {
+        document.body.style.overflow = 'hidden';
+
+        return Swal.fire({
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                document.body.style.overflow = 'hidden';
+            },
+            willClose: () => {
+                document.body.style.overflow = 'unset';
+            },
+            ...config
+        });
     }, []);
 
-    const loadEspacios = async () => {
+    const loadEspacios = useCallback(async () => {
         setLoading(true);
         setError('');
         try {
@@ -78,7 +105,11 @@ function Espacios() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadEspacios();
+    }, [loadEspacios]);
 
     const handleInputChange = (e) => {
         const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -86,6 +117,41 @@ function Espacios() {
             ...formData,
             [e.target.name]: value
         });
+    };
+
+    // Función para comparar cambios en edición
+    const getChanges = (original, updated) => {
+        const changes = [];
+        const fieldsToCompare = {
+            nombre: 'Nombre',
+            descripcion: 'Descripción',
+            capacidadMaxima: 'Capacidad Máxima',
+            costoBase: 'Costo Base',
+            ubicacion: 'Ubicación',
+            disponible: 'Disponibilidad',
+            equipamiento: 'Equipamiento',
+            caracteristicas: 'Características',
+            tipoEspacio: 'Tipo de Espacio',
+            dimensiones: 'Dimensiones',
+            observaciones: 'Observaciones'
+        };
+
+        Object.keys(fieldsToCompare).forEach(field => {
+            const originalValue = original[field];
+            const updatedValue = updated[field];
+
+            if (originalValue !== updatedValue) {
+                if (field === 'disponible') {
+                    changes.push(`${fieldsToCompare[field]}: ${originalValue ? 'Disponible' : 'No disponible'} → ${updatedValue ? 'Disponible' : 'No disponible'}`);
+                } else if (field === 'costoBase') {
+                    changes.push(`${fieldsToCompare[field]}: $${Number(originalValue).toLocaleString()} → $${Number(updatedValue).toLocaleString()}`);
+                } else {
+                    changes.push(`${fieldsToCompare[field]}: "${originalValue || 'Sin definir'}" → "${updatedValue || 'Sin definir'}"`);
+                }
+            }
+        });
+
+        return changes;
     };
 
     const handleSubmit = async (e) => {
@@ -100,17 +166,26 @@ function Espacios() {
 
             const method = selectedEspacio ? 'PUT' : 'POST';
 
+            const dataToSend = {
+                nombre: formData.nombre,
+                descripcion: formData.descripcion,
+                capacidadMaxima: parseInt(formData.capacidadMaxima),
+                costoBase: parseFloat(formData.costoBase),
+                ubicacion: formData.ubicacion,
+                disponible: formData.disponible,
+                equipamiento: formData.equipamiento,
+                caracteristicas: formData.caracteristicas,
+                tipoEspacio: formData.tipoEspacio,
+                dimensiones: formData.dimensiones,
+                observaciones: formData.observaciones
+            };
+
             const response = await fetch(url, {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    nombre: formData.nombre,
-                    descripcion: formData.descripcion,
-                    capacidadMaxima: parseInt(formData.capacidadMaxima),
-                    costoBase: parseFloat(formData.costoBase)
-                })
+                body: JSON.stringify(dataToSend)
             });
 
             if (!response.ok) {
@@ -118,15 +193,75 @@ function Espacios() {
                 throw new Error(errorData.error || 'Error al guardar espacio');
             }
 
-            const result = await response.json();
-            console.log(selectedEspacio ? 'Espacio actualizado:' : 'Espacio creado:', result);
-
             closeModal();
-            await loadEspacios(); // Recargar la lista
+
+            if (selectedEspacio) {
+                // Es una edición - mostrar cambios realizados
+                const changes = getChanges(selectedEspacio, dataToSend);
+
+                if (changes.length > 0) {
+                    await showAlert({
+                        title: '¡Espacio Actualizado!',
+                        html: `
+                            <div style="text-align: left;">
+                                <p><strong>Los siguientes cambios han sido guardados:</strong></p>
+                                <ul style="margin: 10px 0; padding-left: 20px;">
+                                    ${changes.map(change => `<li>${change}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `,
+                        icon: 'success',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#28a745',
+                        timer: 5000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    await showAlert({
+                        title: 'Sin cambios',
+                        text: 'No se detectaron cambios en el espacio',
+                        icon: 'info',
+                        confirmButtonText: 'Aceptar',
+                        confirmButtonColor: '#17a2b8',
+                        timer: 3000,
+                        timerProgressBar: true
+                    });
+                }
+            } else {
+                // Es una creación
+                await showAlert({
+                    title: '¡Espacio Creado!',
+                    html: `
+                        <div style="text-align: left;">
+                            <p><strong>Nuevo espacio "${formData.nombre}" creado exitosamente:</strong></p>
+                            <ul style="margin: 10px 0; padding-left: 20px;">
+                                <li>Capacidad: ${formData.capacidadMaxima} personas</li>
+                                <li>Costo: $${Number(formData.costoBase).toLocaleString()}</li>
+                                <li>Tipo: ${formData.tipoEspacio || 'No especificado'}</li>
+                                <li>Estado: ${formData.disponible ? 'Disponible' : 'No disponible'}</li>
+                            </ul>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 4000,
+                    timerProgressBar: true
+                });
+            }
+
+            await loadEspacios();
 
         } catch (error) {
             console.error('Error al guardar espacio:', error);
-            setError(error.message || 'Error al guardar el espacio');
+            closeModal();
+            await showAlert({
+                title: 'Error al guardar',
+                text: error.message || 'No se pudo guardar el espacio. Verifique su conexión.',
+                icon: 'error',
+                confirmButtonText: 'Aceptar',
+                confirmButtonColor: '#dc3545'
+            });
         } finally {
             setLoading(false);
         }
@@ -135,7 +270,19 @@ function Espacios() {
     const openModal = (espacio = null) => {
         if (espacio) {
             setSelectedEspacio(espacio);
-            setFormData(espacio);
+            setFormData({
+                nombre: espacio.nombre || '',
+                descripcion: espacio.descripcion || '',
+                capacidadMaxima: espacio.capacidadMaxima || '',
+                costoBase: espacio.costoBase || '',
+                ubicacion: espacio.ubicacion || '',
+                disponible: espacio.disponible !== undefined ? espacio.disponible : true,
+                equipamiento: espacio.equipamiento || '',
+                caracteristicas: espacio.caracteristicas || '',
+                tipoEspacio: espacio.tipoEspacio || '',
+                dimensiones: espacio.dimensiones || '',
+                observaciones: espacio.observaciones || ''
+            });
         } else {
             setSelectedEspacio(null);
             setFormData({
@@ -162,30 +309,74 @@ function Espacios() {
         setError('');
     };
 
-    const handleDelete = async (id) => {
-        if (!window.confirm('¿Está seguro de que desea eliminar este espacio?')) {
-            return;
-        }
+    const handleDelete = async (espacio) => {
+        const result = await showAlert({
+            title: '¿Eliminar espacio?',
+            html: `
+                <div style="text-align: left;">
+                    <p>¿Estás seguro de que deseas eliminar el espacio <strong>"${espacio.nombre}"</strong>?</p>
+                    <div style="margin: 15px 0; padding: 10px; background-color: #fff3cd; border-radius: 4px; border-left: 4px solid #ffc107;">
+                        <strong>⚠️ Esta acción no se puede deshacer</strong>
+                        <ul style="margin: 8px 0; padding-left: 20px;">
+                            <li>Se eliminará permanentemente el espacio</li>
+                            <li>Se perderán todas las configuraciones</li>
+                            ${espacio.reservasActuales > 0 ? `<li style="color: #dc3545;"><strong>Atención:</strong> Este espacio tiene ${espacio.reservasActuales} reserva(s) activa(s)</li>` : ''}
+                        </ul>
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        });
 
-        setLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/espacios/${id}`, {
-                method: 'DELETE'
-            });
+        if (result.isConfirmed) {
+            setLoading(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/espacios/${espacio.id}`, {
+                    method: 'DELETE'
+                });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al eliminar espacio');
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al eliminar espacio');
+                }
+
+                await showAlert({
+                    title: '¡Espacio Eliminado!',
+                    html: `
+                        <div style="text-align: center;">
+                            <p>El espacio <strong>"${espacio.nombre}"</strong> ha sido eliminado exitosamente.</p>
+                            <div style="margin-top: 15px; padding: 10px; background-color: #d4edda; border-radius: 4px;">
+                                <small>✅ Todos los datos asociados han sido removidos del sistema</small>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+
+                await loadEspacios();
+
+            } catch (error) {
+                console.error('Error al eliminar espacio:', error);
+                await showAlert({
+                    title: 'Error al eliminar',
+                    text: error.message || 'No se pudo eliminar el espacio. Verifique su conexión.',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
+            } finally {
+                setLoading(false);
             }
-
-            console.log('Espacio eliminado:', id);
-            await loadEspacios(); // Recargar la lista
-
-        } catch (error) {
-            console.error('Error al eliminar espacio:', error);
-            setError(error.message || 'Error al eliminar el espacio');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -194,30 +385,67 @@ function Espacios() {
         if (!espacio) return;
 
         const nuevaDisponibilidad = !espacio.disponible;
+        const accion = nuevaDisponibilidad ? 'habilitar' : 'deshabilitar';
 
-        setLoading(true);
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/espacios/${id}/disponibilidad`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ disponible: nuevaDisponibilidad })
-            });
+        const result = await showAlert({
+            title: `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} espacio?`,
+            html: `
+                <div style="text-align: left;">
+                    <p>¿Deseas <strong>${accion}</strong> el espacio <strong>"${espacio.nombre}"</strong>?</p>
+                    <div style="margin: 15px 0; padding: 10px; background-color: ${nuevaDisponibilidad ? '#d4edda' : '#f8d7da'}; border-radius: 4px;">
+                        <p style="margin: 0;"><strong>${nuevaDisponibilidad ? '✅' : '❌'} El espacio quedará ${nuevaDisponibilidad ? 'disponible' : 'no disponible'} para nuevas reservas</strong></p>
+                    </div>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: nuevaDisponibilidad ? '#28a745' : '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Sí, ${accion}`,
+            cancelButtonText: 'Cancelar',
+            reverseButtons: true
+        });
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Error al cambiar disponibilidad');
+        if (result.isConfirmed) {
+            setLoading(true);
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/espacios/${id}/disponibilidad`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ disponible: nuevaDisponibilidad })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al cambiar disponibilidad');
+                }
+
+                await showAlert({
+                    title: '¡Disponibilidad Actualizada!',
+                    text: `El espacio "${espacio.nombre}" ahora está ${nuevaDisponibilidad ? 'disponible' : 'no disponible'} para reservas`,
+                    icon: 'success',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#28a745',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+
+                await loadEspacios();
+
+            } catch (error) {
+                console.error('Error al cambiar disponibilidad:', error);
+                await showAlert({
+                    title: 'Error al cambiar disponibilidad',
+                    text: error.message || 'No se pudo cambiar la disponibilidad. Verifique su conexión.',
+                    icon: 'error',
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#dc3545'
+                });
+            } finally {
+                setLoading(false);
             }
-
-            console.log('Disponibilidad cambiada para espacio:', id);
-            await loadEspacios(); // Recargar la lista
-
-        } catch (error) {
-            console.error('Error al cambiar disponibilidad:', error);
-            setError(error.message || 'Error al cambiar la disponibilidad');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -372,7 +600,6 @@ function Espacios() {
                                 >
                                     ✏️ Editar
                                 </button>
-                                {/* AGREGAR ESTE BOTÓN AQUÍ: */}
                                 <button
                                     className={`btn-toggle ${espacio.disponible ? 'btn-disable' : 'btn-enable'}`}
                                     onClick={() => toggleDisponibilidad(espacio.id)}
@@ -391,7 +618,7 @@ function Espacios() {
                                 </button>
                                 <button
                                     className="btn-secondary"
-                                    onClick={() => handleDelete(espacio.id)}
+                                    onClick={() => handleDelete(espacio)}
                                     disabled={loading}
                                     style={{ backgroundColor: '#dc3545', color: 'white' }}
                                 >

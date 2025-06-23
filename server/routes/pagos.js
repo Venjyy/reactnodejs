@@ -7,7 +7,7 @@ router.post('/pagos', (req, res) => {
     console.log('Endpoint POST /api/pagos llamado desde dashboard');
     console.log('Datos recibidos:', req.body);
 
-    const { reservaId, monto, metodoPago, fechaPago, observaciones } = req.body;
+    const { reservaId, monto, metodoPago, fechaPago, tipoPago, comprobante, observaciones } = req.body;
 
     if (!reservaId || !monto || !fechaPago) {
         return res.status(400).json({
@@ -15,50 +15,124 @@ router.post('/pagos', (req, res) => {
         });
     }
 
-    // Verificar que la reserva existe
-    const checkReservaQuery = 'SELECT id, estado FROM reserva WHERE id = ?';
+    if (monto <= 0) {
+        return res.status(400).json({
+            error: 'El monto debe ser mayor a 0'
+        });
+    }
+
+    // Verificar que la reserva existe y no está cancelada
+    const checkReservaQuery = `
+        SELECT r.id, r.estado, r.fecha_reserva, c.nombre as clienteNombre, e.nombre as espacioNombre
+        FROM reserva r
+        JOIN cliente c ON r.cliente_id = c.id
+        JOIN espacio e ON r.espacio_id = e.id
+        WHERE r.id = ?
+    `;
 
     connection.query(checkReservaQuery, [reservaId], (err, results) => {
         if (err) {
             console.error('Error al verificar reserva:', err);
-            return res.status(500).json({ error: 'Error al verificar reserva' });
+            return res.status(500).json({
+                error: 'Error al verificar reserva',
+                details: err.message
+            });
         }
 
         if (results.length === 0) {
             return res.status(404).json({ error: 'Reserva no encontrada' });
         }
 
-        if (results[0].estado === 'cancelada') {
+        const reserva = results[0];
+
+        if (reserva.estado === 'cancelada') {
             return res.status(400).json({ error: 'No se puede agregar pagos a una reserva cancelada' });
         }
 
-        // Calcular el monto total (por ahora usaremos el mismo monto del abono)
-        const montoTotal = monto;
-
-        // Crear el pago
-        const insertQuery = `
-            INSERT INTO pago (reserva_id, monto_total, abono, metodo_pago, fecha_pago, observaciones)
-            VALUES (?, ?, ?, ?, ?, ?)
+        // Verificar saldo disponible
+        const checkSaldoQuery = `
+            SELECT 
+                (e.costo_base + COALESCE(servicios.costo_servicios, 0)) as costoTotal,
+                COALESCE(pagos.total_pagado, 0) as totalPagado,
+                ((e.costo_base + COALESCE(servicios.costo_servicios, 0)) - COALESCE(pagos.total_pagado, 0)) as saldoPendiente
+            FROM reserva r
+            JOIN espacio e ON r.espacio_id = e.id
+            LEFT JOIN (
+                SELECT rs.reserva_id, SUM(s.costo) as costo_servicios
+                FROM reserva_servicio rs
+                JOIN servicio s ON rs.servicio_id = s.id
+                WHERE rs.reserva_id = ?
+                GROUP BY rs.reserva_id
+            ) servicios ON r.id = servicios.reserva_id
+            LEFT JOIN (
+                SELECT reserva_id, SUM(abono) as total_pagado
+                FROM pago
+                WHERE reserva_id = ?
+                GROUP BY reserva_id
+            ) pagos ON r.id = pagos.reserva_id
+            WHERE r.id = ?
         `;
 
-        connection.query(insertQuery, [reservaId, montoTotal, monto, metodoPago || 'Efectivo', fechaPago, observaciones || ''], (err, result) => {
+        connection.query(checkSaldoQuery, [reservaId, reservaId, reservaId], (err, saldoResults) => {
             if (err) {
-                console.error('Error al crear pago:', err);
-                return res.status(500).json({ error: 'Error al crear pago' });
+                console.error('Error al verificar saldo:', err);
+                return res.status(500).json({
+                    error: 'Error al verificar saldo',
+                    details: err.message
+                });
             }
 
-            console.log('Pago creado con ID:', result.insertId);
-            res.status(201).json({
-                id: result.insertId,
-                message: 'Pago registrado correctamente',
-                reservaId: reservaId,
-                monto: parseFloat(monto)
+            const saldoInfo = saldoResults[0];
+            const saldoPendiente = saldoInfo.saldoPendiente;
+
+            if (monto > saldoPendiente) {
+                return res.status(400).json({
+                    error: `El monto ($${monto.toLocaleString()}) excede el saldo pendiente ($${saldoPendiente.toLocaleString()})`
+                });
+            }
+
+            // Crear el pago
+            const insertQuery = `
+                INSERT INTO pago (reserva_id, monto_total, abono, metodo_pago, fecha_pago, observaciones)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `;
+
+            connection.query(insertQuery, [
+                reservaId,
+                monto,
+                monto,
+                metodoPago || 'Efectivo',
+                fechaPago,
+                observaciones || ''
+            ], (err, result) => {
+                if (err) {
+                    console.error('Error al crear pago:', err);
+                    return res.status(500).json({
+                        error: 'Error al crear pago',
+                        details: err.message
+                    });
+                }
+
+                console.log('Pago creado con ID:', result.insertId);
+
+                // Respuesta con más información
+                res.status(201).json({
+                    id: result.insertId,
+                    message: 'Pago registrado correctamente',
+                    reservaId: reservaId,
+                    clienteNombre: reserva.clienteNombre,
+                    espacioNombre: reserva.espacioNombre,
+                    monto: parseFloat(monto),
+                    metodoPago: metodoPago || 'Efectivo',
+                    saldoAnterior: saldoPendiente,
+                    nuevoSaldo: saldoPendiente - parseFloat(monto)
+                });
             });
         });
     });
 });
 
-// Endpoint CORREGIDO para obtener todos los pagos
+// Endpoint MEJORADO para obtener todos los pagos - FECHA CORREGIDA
 router.get('/pagos', (req, res) => {
     console.log('Endpoint /api/pagos llamado');
 
@@ -67,7 +141,7 @@ router.get('/pagos', (req, res) => {
             p.id,
             p.abono as monto,
             COALESCE(p.metodo_pago, 'Efectivo') as metodoPago,
-            p.fecha_pago as fechaPago,
+            DATE(p.fecha_pago) as fechaPago,
             COALESCE(p.observaciones, '') as observaciones,
             p.fecha_creacion,
             r.id as reservaId,
@@ -119,25 +193,41 @@ router.get('/pagos', (req, res) => {
                         const costoTotal = parseFloat(pago.espacioCosto) + parseFloat(costoServicios);
                         const saldoPendiente = costoTotal - parseFloat(totalPagado);
 
+                        // Formatear fecha como YYYY-MM-DD
+                        let fechaFormateada = '';
+                        if (pago.fechaPago) {
+                            if (pago.fechaPago instanceof Date) {
+                                fechaFormateada = pago.fechaPago.toISOString().split('T')[0];
+                            } else {
+                                // Si viene como string, asegurar formato YYYY-MM-DD
+                                const fecha = new Date(pago.fechaPago);
+                                if (!isNaN(fecha.getTime())) {
+                                    fechaFormateada = fecha.toISOString().split('T')[0];
+                                } else {
+                                    fechaFormateada = pago.fechaPago;
+                                }
+                            }
+                        }
+
                         resolve({
                             id: pago.id,
                             reservaId: pago.reservaId,
-                            clienteNombre: pago.clienteNombre,
-                            clienteRut: pago.clienteRut,
-                            espacioNombre: pago.espacioNombre,
+                            clienteNombre: pago.clienteNombre || 'Cliente no disponible',
+                            clienteRut: pago.clienteRut || '',
+                            espacioNombre: pago.espacioNombre || 'Espacio no disponible',
                             fechaEvento: pago.fechaEvento,
-                            monto: parseFloat(pago.monto),
+                            monto: parseFloat(pago.monto) || 0,
                             metodoPago: pago.metodoPago || 'Efectivo',
-                            fechaPago: pago.fechaPago,
+                            fechaPago: fechaFormateada,
                             tipoPago: 'abono',
                             estado: 'confirmado',
                             comprobante: '',
                             observaciones: pago.observaciones || '',
-                            espacioCosto: parseFloat(pago.espacioCosto),
-                            costoServicios: parseFloat(costoServicios),
-                            costoTotal: costoTotal,
-                            montoPagado: parseFloat(totalPagado),
-                            saldoPendiente: saldoPendiente
+                            espacioCosto: parseFloat(pago.espacioCosto) || 0,
+                            costoServicios: parseFloat(costoServicios) || 0,
+                            costoTotal: costoTotal || 0,
+                            montoPagado: parseFloat(totalPagado) || 0,
+                            saldoPendiente: Math.max(0, saldoPendiente) || 0
                         });
                     });
                 });
@@ -145,16 +235,19 @@ router.get('/pagos', (req, res) => {
         });
 
         Promise.all(promises).then(pagosCompletos => {
-            console.log('Pagos obtenidos:', pagosCompletos.length);
+            console.log('Pagos obtenidos y procesados:', pagosCompletos.length);
             res.status(200).json(pagosCompletos);
         }).catch(error => {
             console.error('Error procesando pagos:', error);
-            res.status(500).json({ error: 'Error procesando pagos' });
+            res.status(500).json({
+                error: 'Error procesando pagos',
+                details: error.message
+            });
         });
     });
 });
 
-// Endpoint para obtener reservas disponibles para pagos
+// Endpoint MEJORADO para obtener reservas disponibles para pagos
 router.get('/reservas-para-pagos', (req, res) => {
     console.log('Endpoint /api/reservas-para-pagos llamado');
 
@@ -177,7 +270,10 @@ router.get('/reservas-para-pagos', (req, res) => {
     connection.query(query, (err, results) => {
         if (err) {
             console.error('Error al obtener reservas para pagos:', err);
-            return res.status(500).json({ error: 'Error al obtener reservas para pagos' });
+            return res.status(500).json({
+                error: 'Error al obtener reservas para pagos',
+                details: err.message
+            });
         }
 
         // Para cada reserva, calcular el saldo pendiente
@@ -212,14 +308,14 @@ router.get('/reservas-para-pagos', (req, res) => {
                                 id: reserva.id,
                                 fechaEvento: reserva.fechaEvento,
                                 estado: reserva.estado,
-                                clienteNombre: reserva.clienteNombre,
-                                clienteRut: reserva.clienteRut,
-                                espacioNombre: reserva.espacioNombre,
-                                costo_base: parseFloat(reserva.costo_base),
-                                costoServicios: parseFloat(costoServicios),
-                                costoTotal: costoTotal,
-                                totalPagado: parseFloat(totalPagado),
-                                saldoPendiente: saldoPendiente
+                                clienteNombre: reserva.clienteNombre || 'Cliente no disponible',
+                                clienteRut: reserva.clienteRut || '',
+                                espacioNombre: reserva.espacioNombre || 'Espacio no disponible',
+                                costo_base: parseFloat(reserva.costo_base) || 0,
+                                costoServicios: parseFloat(costoServicios) || 0,
+                                costoTotal: costoTotal || 0,
+                                totalPagado: parseFloat(totalPagado) || 0,
+                                saldoPendiente: Math.max(0, saldoPendiente) || 0
                             });
                         } else {
                             resolve(null);
@@ -235,17 +331,22 @@ router.get('/reservas-para-pagos', (req, res) => {
             res.status(200).json(reservasFiltradas);
         }).catch(error => {
             console.error('Error procesando reservas:', error);
-            res.status(500).json({ error: 'Error procesando reservas' });
+            res.status(500).json({
+                error: 'Error procesando reservas',
+                details: error.message
+            });
         });
     });
 });
 
-// Endpoint para actualizar un pago
+// Endpoint MEJORADO para actualizar un pago
 router.put('/pagos/:id', (req, res) => {
-    console.log('Endpoint PUT /api/pagos llamado');
+    console.log('Endpoint PUT /api/pagos/:id llamado');
+    console.log('ID de pago:', req.params.id);
+    console.log('Datos recibidos:', req.body);
 
     const { id } = req.params;
-    const { monto, metodoPago, fechaPago, observaciones } = req.body;
+    const { monto, metodoPago, fechaPago, tipoPago, comprobante, observaciones } = req.body;
 
     if (!monto || !fechaPago) {
         return res.status(400).json({
@@ -253,51 +354,194 @@ router.put('/pagos/:id', (req, res) => {
         });
     }
 
-    const updateQuery = `
-        UPDATE pago 
-        SET monto_total = ?, abono = ?, metodo_pago = ?, fecha_pago = ?, observaciones = ?
-        WHERE id = ?
+    if (monto <= 0) {
+        return res.status(400).json({
+            error: 'El monto debe ser mayor a 0'
+        });
+    }
+
+    // Verificar que el pago existe y obtener información de la reserva
+    const checkPagoQuery = `
+        SELECT p.*, r.estado as reservaEstado, c.nombre as clienteNombre, e.nombre as espacioNombre
+        FROM pago p
+        JOIN reserva r ON p.reserva_id = r.id
+        JOIN cliente c ON r.cliente_id = c.id
+        JOIN espacio e ON r.espacio_id = e.id
+        WHERE p.id = ?
     `;
 
-    connection.query(updateQuery, [monto, monto, metodoPago || 'Efectivo', fechaPago, observaciones || '', id], (err, result) => {
+    connection.query(checkPagoQuery, [id], (err, results) => {
         if (err) {
-            console.error('Error al actualizar pago:', err);
-            return res.status(500).json({ error: 'Error al actualizar pago' });
+            console.error('Error al verificar pago:', err);
+            return res.status(500).json({
+                error: 'Error al verificar pago',
+                details: err.message
+            });
         }
 
-        if (result.affectedRows === 0) {
+        if (results.length === 0) {
             return res.status(404).json({ error: 'Pago no encontrado' });
         }
 
-        console.log('Pago actualizado:', id);
-        res.status(200).json({ message: 'Pago actualizado correctamente' });
+        const pagoActual = results[0];
+
+        if (pagoActual.reservaEstado === 'cancelada') {
+            return res.status(400).json({ error: 'No se puede modificar pagos de una reserva cancelada' });
+        }
+
+        // Verificar saldo disponible (sin contar el pago actual)
+        const checkSaldoQuery = `
+            SELECT 
+                (e.costo_base + COALESCE(servicios.costo_servicios, 0)) as costoTotal,
+                (COALESCE(pagos.total_pagado, 0) - ?) as totalPagadoSinActual,
+                ((e.costo_base + COALESCE(servicios.costo_servicios, 0)) - (COALESCE(pagos.total_pagado, 0) - ?)) as saldoDisponible
+            FROM reserva r
+            JOIN espacio e ON r.espacio_id = e.id
+            LEFT JOIN (
+                SELECT rs.reserva_id, SUM(s.costo) as costo_servicios
+                FROM reserva_servicio rs
+                JOIN servicio s ON rs.servicio_id = s.id
+                WHERE rs.reserva_id = ?
+                GROUP BY rs.reserva_id
+            ) servicios ON r.id = servicios.reserva_id
+            LEFT JOIN (
+                SELECT reserva_id, SUM(abono) as total_pagado
+                FROM pago
+                WHERE reserva_id = ?
+                GROUP BY reserva_id
+            ) pagos ON r.id = pagos.reserva_id
+            WHERE r.id = ?
+        `;
+
+        connection.query(checkSaldoQuery, [
+            pagoActual.abono,
+            pagoActual.abono,
+            pagoActual.reserva_id,
+            pagoActual.reserva_id,
+            pagoActual.reserva_id
+        ], (err, saldoResults) => {
+            if (err) {
+                console.error('Error al verificar saldo:', err);
+                return res.status(500).json({
+                    error: 'Error al verificar saldo',
+                    details: err.message
+                });
+            }
+
+            const saldoInfo = saldoResults[0];
+            const saldoDisponible = saldoInfo.saldoDisponible;
+
+            if (monto > saldoDisponible) {
+                return res.status(400).json({
+                    error: `El monto ($${monto.toLocaleString()}) excede el saldo disponible ($${saldoDisponible.toLocaleString()})`
+                });
+            }
+
+            // Actualizar el pago
+            const updateQuery = `
+                UPDATE pago 
+                SET monto_total = ?, abono = ?, metodo_pago = ?, fecha_pago = ?, observaciones = ?
+                WHERE id = ?
+            `;
+
+            connection.query(updateQuery, [
+                monto,
+                monto,
+                metodoPago || 'Efectivo',
+                fechaPago,
+                observaciones || '',
+                id
+            ], (err, result) => {
+                if (err) {
+                    console.error('Error al actualizar pago:', err);
+                    return res.status(500).json({
+                        error: 'Error al actualizar pago',
+                        details: err.message
+                    });
+                }
+
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ error: 'Pago no encontrado' });
+                }
+
+                console.log('Pago actualizado:', id);
+                res.status(200).json({
+                    id: id,
+                    message: 'Pago actualizado correctamente',
+                    clienteNombre: pagoActual.clienteNombre,
+                    espacioNombre: pagoActual.espacioNombre,
+                    montoAnterior: parseFloat(pagoActual.abono),
+                    montoNuevo: parseFloat(monto)
+                });
+            });
+        });
     });
 });
 
-// Endpoint para eliminar un pago
+// Endpoint MEJORADO para eliminar un pago
 router.delete('/pagos/:id', (req, res) => {
-    console.log('Endpoint DELETE /api/pagos llamado');
+    console.log('Endpoint DELETE /api/pagos/:id llamado');
+    console.log('ID de pago:', req.params.id);
 
     const { id } = req.params;
 
-    const deleteQuery = 'DELETE FROM pago WHERE id = ?';
+    // Primero obtener información del pago antes de eliminarlo
+    const getPagoQuery = `
+        SELECT p.*, c.nombre as clienteNombre, e.nombre as espacioNombre
+        FROM pago p
+        JOIN reserva r ON p.reserva_id = r.id
+        JOIN cliente c ON r.cliente_id = c.id
+        JOIN espacio e ON r.espacio_id = e.id
+        WHERE p.id = ?
+    `;
 
-    connection.query(deleteQuery, [id], (err, result) => {
+    connection.query(getPagoQuery, [id], (err, results) => {
         if (err) {
-            console.error('Error al eliminar pago:', err);
-            return res.status(500).json({ error: 'Error al eliminar pago' });
+            console.error('Error al obtener información del pago:', err);
+            return res.status(500).json({
+                error: 'Error al obtener información del pago',
+                details: err.message
+            });
         }
 
-        if (result.affectedRows === 0) {
+        if (results.length === 0) {
             return res.status(404).json({ error: 'Pago no encontrado' });
         }
 
-        console.log('Pago eliminado:', id);
-        res.status(200).json({ message: 'Pago eliminado correctamente' });
+        const pagoInfo = results[0];
+
+        // Eliminar el pago
+        const deleteQuery = 'DELETE FROM pago WHERE id = ?';
+
+        connection.query(deleteQuery, [id], (err, result) => {
+            if (err) {
+                console.error('Error al eliminar pago:', err);
+                return res.status(500).json({
+                    error: 'Error al eliminar pago',
+                    details: err.message
+                });
+            }
+
+            if (result.affectedRows === 0) {
+                return res.status(404).json({ error: 'Pago no encontrado' });
+            }
+
+            console.log('Pago eliminado:', id);
+            res.status(200).json({
+                message: 'Pago eliminado correctamente',
+                pagoEliminado: {
+                    id: id,
+                    clienteNombre: pagoInfo.clienteNombre,
+                    espacioNombre: pagoInfo.espacioNombre,
+                    monto: parseFloat(pagoInfo.abono),
+                    fechaPago: pagoInfo.fecha_pago
+                }
+            });
+        });
     });
 });
 
-// Endpoint para obtener estadísticas de pagos
+// Endpoint MEJORADO para obtener estadísticas de pagos
 router.get('/pagos/estadisticas', (req, res) => {
     console.log('Endpoint /api/pagos/estadisticas llamado');
 
@@ -312,7 +556,10 @@ router.get('/pagos/estadisticas', (req, res) => {
     connection.query(estadisticasQuery, (err, results) => {
         if (err) {
             console.error('Error al obtener estadísticas:', err);
-            return res.status(500).json({ error: 'Error al obtener estadísticas' });
+            return res.status(500).json({
+                error: 'Error al obtener estadísticas',
+                details: err.message
+            });
         }
 
         // Calcular pagos pendientes por separado
@@ -339,6 +586,14 @@ router.get('/pagos/estadisticas', (req, res) => {
         `;
 
         connection.query(pagosPendientesQuery, (err, pendientesResult) => {
+            if (err) {
+                console.error('Error al calcular pagos pendientes:', err);
+                return res.status(500).json({
+                    error: 'Error al calcular pagos pendientes',
+                    details: err.message
+                });
+            }
+
             const data = results[0] || {};
             const pendientesData = pendientesResult[0] || {};
 
