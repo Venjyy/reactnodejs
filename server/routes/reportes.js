@@ -1,5 +1,6 @@
 const express = require('express');
 const connection = require('../config/database');
+const ExportUtils = require('../utils/exportUtils');
 const router = express.Router();
 
 // Endpoint para obtener estadísticas generales
@@ -197,7 +198,314 @@ router.get('/reportes/clientes-top-ingresos', (req, res) => {
         res.status(200).json(clientesTopPorIngresos);
     });
 });
+// Endpoint para exportar datos a Excel
+router.post('/reportes/exportar-excel', async (req, res) => {
+    console.log('Endpoint /api/reportes/exportar-excel llamado');
+    console.log('Datos recibidos:', req.body);
 
+    const {
+        tipoReporte,
+        fechaDesde,
+        fechaHasta,
+        clienteIds,
+        espacioIds,
+        servicioIds,
+        formato = 'excel'
+    } = req.body;
+
+    try {
+        let datos = [];
+        let nombreArchivo = '';
+
+        // Obtener datos según el tipo de reporte
+        switch (tipoReporte) {
+            case 'clientes':
+                datos = await obtenerDatosClientes(clienteIds, fechaDesde, fechaHasta);
+                nombreArchivo = `reporte_clientes_${new Date().toISOString().split('T')[0]}`;
+                break;
+            case 'espacios':
+                datos = await obtenerDatosEspacios(espacioIds, fechaDesde, fechaHasta);
+                nombreArchivo = `reporte_espacios_${new Date().toISOString().split('T')[0]}`;
+                break;
+            case 'servicios':
+                datos = await obtenerDatosServicios(servicioIds, fechaDesde, fechaHasta);
+                nombreArchivo = `reporte_servicios_${new Date().toISOString().split('T')[0]}`;
+                break;
+            case 'reservas':
+                datos = await obtenerDatosReservas(clienteIds, espacioIds, fechaDesde, fechaHasta);
+                nombreArchivo = `reporte_reservas_${new Date().toISOString().split('T')[0]}`;
+                break;
+            case 'pagos':
+                datos = await obtenerDatosPagos(clienteIds, espacioIds, fechaDesde, fechaHasta);
+                nombreArchivo = `reporte_pagos_${new Date().toISOString().split('T')[0]}`;
+                break;
+        }
+
+        if (formato === 'excel') {
+            const workbook = await ExportUtils.generarExcel(datos, nombreArchivo, tipoReporte);
+
+            res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}.xlsx"`);
+
+            await workbook.xlsx.write(res);
+            res.end();
+        } else if (formato === 'pdf') {
+            const pdf = ExportUtils.generarPDF(datos, tipoReporte);
+
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}.pdf"`);
+
+            const pdfBuffer = Buffer.from(pdf.output('arraybuffer'));
+            res.send(pdfBuffer);
+        }
+
+    } catch (error) {
+        console.error('Error al exportar:', error);
+        res.status(500).json({
+            error: 'Error al generar el reporte',
+            details: error.message
+        });
+    }
+});
+
+// Funciones auxiliares para obtener datos
+async function obtenerDatosClientes(clienteIds, fechaDesde, fechaHasta) {
+    return new Promise((resolve, reject) => {
+        let query = `
+            SELECT 
+                c.id,
+                c.nombre,
+                c.rut,
+                c.correo,
+                c.telefono,
+                c.fecha_creacion,
+                COUNT(r.id) as total_reservas,
+                MAX(r.fecha_reserva) as ultima_reserva
+            FROM cliente c
+            LEFT JOIN reserva r ON c.id = r.cliente_id
+        `;
+
+        const params = [];
+        const conditions = [];
+
+        if (clienteIds && clienteIds.length > 0) {
+            conditions.push(`c.id IN (${clienteIds.map(() => '?').join(',')})`);
+            params.push(...clienteIds);
+        }
+
+        if (fechaDesde && fechaHasta) {
+            conditions.push(`c.fecha_creacion BETWEEN ? AND ?`);
+            params.push(fechaDesde, fechaHasta);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ${conditions.join(' AND ')}`;
+        }
+
+        query += ` GROUP BY c.id, c.nombre, c.rut, c.correo, c.telefono, c.fecha_creacion ORDER BY c.nombre`;
+
+        connection.query(query, params, (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+        });
+    });
+}
+
+async function obtenerDatosEspacios(espacioIds, fechaDesde, fechaHasta) {
+    return new Promise((resolve, reject) => {
+        let query = `
+            SELECT 
+                e.id,
+                e.nombre,
+                e.capacidad as capacidadMaxima,
+                e.costo_base as costoBase,
+                e.descripcion,
+                e.disponible,
+                e.fecha_creacion,
+                COUNT(r.id) as reservasActuales
+            FROM espacio e
+            LEFT JOIN reserva r ON e.id = r.espacio_id AND r.estado IN ('pendiente', 'confirmada')
+        `;
+
+        const params = [];
+        const conditions = [];
+
+        if (espacioIds && espacioIds.length > 0) {
+            conditions.push(`e.id IN (${espacioIds.map(() => '?').join(',')})`);
+            params.push(...espacioIds);
+        }
+
+        if (fechaDesde && fechaHasta) {
+            conditions.push(`e.fecha_creacion BETWEEN ? AND ?`);
+            params.push(fechaDesde, fechaHasta);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ${conditions.join(' AND ')}`;
+        }
+
+        query += ` GROUP BY e.id ORDER BY e.nombre`;
+
+        connection.query(query, params, (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+        });
+    });
+}
+
+async function obtenerDatosServicios(servicioIds, fechaDesde, fechaHasta) {
+    return new Promise((resolve, reject) => {
+        let query = `
+            SELECT 
+                s.id,
+                s.nombre,
+                s.descripcion,
+                s.categoria,
+                s.costo as precio,
+                s.disponible,
+                s.proveedor_externo as proveedorExterno,
+                s.fecha_creacion,
+                COUNT(rs.reserva_id) as reservasActivas
+            FROM servicio s
+            LEFT JOIN reserva_servicio rs ON s.id = rs.servicio_id
+        `;
+
+        const params = [];
+        const conditions = [];
+
+        if (servicioIds && servicioIds.length > 0) {
+            conditions.push(`s.id IN (${servicioIds.map(() => '?').join(',')})`);
+            params.push(...servicioIds);
+        }
+
+        if (fechaDesde && fechaHasta) {
+            conditions.push(`s.fecha_creacion BETWEEN ? AND ?`);
+            params.push(fechaDesde, fechaHasta);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ${conditions.join(' AND ')}`;
+        }
+
+        query += ` GROUP BY s.id ORDER BY s.nombre`;
+
+        connection.query(query, params, (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+        });
+    });
+}
+
+async function obtenerDatosReservas(clienteIds, espacioIds, fechaDesde, fechaHasta) {
+    return new Promise((resolve, reject) => {
+        let query = `
+            SELECT 
+                r.id,
+                r.fecha_reserva as fechaEvento,
+                r.estado,
+                r.cantidad_personas as numeroPersonas,
+                r.razon as tipoEvento,
+                c.nombre as clienteNombre,
+                e.nombre as espacioNombre,
+                e.costo_base as espacioCosto,
+                COALESCE(SUM(s.costo), 0) as totalServicios,
+                (e.costo_base + COALESCE(SUM(s.costo), 0)) as costoTotal,
+                COALESCE(p.total_pagado, 0) as totalPagado,
+                ((e.costo_base + COALESCE(SUM(s.costo), 0)) - COALESCE(p.total_pagado, 0)) as saldoPendiente
+            FROM reserva r
+            JOIN cliente c ON r.cliente_id = c.id
+            JOIN espacio e ON r.espacio_id = e.id
+            LEFT JOIN reserva_servicio rs ON r.id = rs.reserva_id
+            LEFT JOIN servicio s ON rs.servicio_id = s.id
+            LEFT JOIN (
+                SELECT reserva_id, SUM(abono) as total_pagado
+                FROM pago
+                GROUP BY reserva_id
+            ) p ON r.id = p.reserva_id
+        `;
+
+        const params = [];
+        const conditions = [];
+
+        if (clienteIds && clienteIds.length > 0) {
+            conditions.push(`c.id IN (${clienteIds.map(() => '?').join(',')})`);
+            params.push(...clienteIds);
+        }
+
+        if (espacioIds && espacioIds.length > 0) {
+            conditions.push(`e.id IN (${espacioIds.map(() => '?').join(',')})`);
+            params.push(...espacioIds);
+        }
+
+        if (fechaDesde && fechaHasta) {
+            conditions.push(`r.fecha_reserva BETWEEN ? AND ?`);
+            params.push(fechaDesde, fechaHasta);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ${conditions.join(' AND ')}`;
+        }
+
+        query += ` GROUP BY r.id ORDER BY r.fecha_reserva DESC`;
+
+        connection.query(query, params, (err, results) => {
+            if (err) reject(err);
+            else resolve(results.map(row => ({
+                ...row,
+                horaInicio: new Date(row.fechaEvento).toTimeString().substring(0, 5)
+            })));
+        });
+    });
+}
+
+async function obtenerDatosPagos(clienteIds, espacioIds, fechaDesde, fechaHasta) {
+    return new Promise((resolve, reject) => {
+        let query = `
+            SELECT 
+                p.id,
+                p.abono as monto,
+                p.metodo_pago as metodoPago,
+                p.fecha_pago as fechaPago,
+                p.observaciones,
+                'confirmado' as estado,
+                c.nombre as clienteNombre,
+                e.nombre as espacioNombre
+            FROM pago p
+            JOIN reserva r ON p.reserva_id = r.id
+            JOIN cliente c ON r.cliente_id = c.id
+            JOIN espacio e ON r.espacio_id = e.id
+        `;
+
+        const params = [];
+        const conditions = [];
+
+        if (clienteIds && clienteIds.length > 0) {
+            conditions.push(`c.id IN (${clienteIds.map(() => '?').join(',')})`);
+            params.push(...clienteIds);
+        }
+
+        if (espacioIds && espacioIds.length > 0) {
+            conditions.push(`e.id IN (${espacioIds.map(() => '?').join(',')})`);
+            params.push(...espacioIds);
+        }
+
+        if (fechaDesde && fechaHasta) {
+            conditions.push(`p.fecha_pago BETWEEN ? AND ?`);
+            params.push(fechaDesde, fechaHasta);
+        }
+
+        if (conditions.length > 0) {
+            query += ` WHERE ${conditions.join(' AND ')}`;
+        }
+
+        query += ` ORDER BY p.fecha_pago DESC`;
+
+        connection.query(query, params, (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+        });
+    });
+}
 // Endpoint CORREGIDO consolidado para obtener todos los datos de reportes
 router.get('/reportes/datos-completos', (req, res) => {
     console.log('Endpoint /api/reportes/datos-completos llamado');

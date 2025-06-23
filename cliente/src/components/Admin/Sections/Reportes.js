@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import Swal from 'sweetalert2';
 import './Sections.css';
 
 function Reportes() {
@@ -16,6 +17,71 @@ function Reportes() {
     const [tipoReporte, setTipoReporte] = useState('resumen');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    // NUEVOS ESTADOS PARA EXPORTACIÓN
+    const [modalExportar, setModalExportar] = useState(false);
+    const [opcionesExportacion, setOpcionesExportacion] = useState({
+        tipoReporte: 'clientes',
+        formato: 'excel',
+        fechaDesde: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
+        fechaHasta: new Date().toISOString().split('T')[0],
+        clienteIds: [],
+        espacioIds: [],
+        servicioIds: []
+    });
+
+    // Estados para los selectores
+    const [clientesDisponibles, setClientesDisponibles] = useState([]);
+    const [espaciosDisponibles, setEspaciosDisponibles] = useState([]);
+    const [serviciosDisponibles, setServiciosDisponibles] = useState([]);
+
+    // Cargar datos para los selectores
+    useEffect(() => {
+        cargarDatosSelectores();
+    }, []);
+
+    const cargarDatosSelectores = async () => {
+        try {
+            const [clientesRes, espaciosRes, serviciosRes] = await Promise.all([
+                fetch('http://localhost:3001/api/clientes'),
+                fetch('http://localhost:3001/api/espacios'),
+                fetch('http://localhost:3001/api/servicios')
+            ]);
+
+            if (clientesRes.ok) {
+                const clientes = await clientesRes.json();
+                setClientesDisponibles(clientes);
+            }
+
+            if (espaciosRes.ok) {
+                const espacios = await espaciosRes.json();
+                setEspaciosDisponibles(espacios);
+            }
+
+            if (serviciosRes.ok) {
+                const servicios = await serviciosRes.json();
+                setServiciosDisponibles(servicios);
+            }
+        } catch (error) {
+            console.error('Error cargando datos para selectores:', error);
+        }
+    };
+    // PRIMER: Declarar showAlert con useCallback
+    const showAlert = useCallback((config) => {
+        document.body.style.overflow = 'hidden';
+
+        return Swal.fire({
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                document.body.style.overflow = 'hidden';
+            },
+            willClose: () => {
+                document.body.style.overflow = 'unset';
+            },
+            ...config
+        });
+    }, []);
 
     // PRIMER: Declarar loadReporteDataIndividual con useCallback
     const loadReporteDataIndividual = useCallback(async () => {
@@ -128,9 +194,135 @@ function Reportes() {
         });
     };
 
+    // NUEVAS FUNCIONES PARA EXPORTACIÓN
     const exportarReporte = (formato) => {
-        console.log(`Exportando reporte en formato ${formato}:`, reporteData);
-        alert(`Reporte exportado en formato ${formato.toUpperCase()}`);
+        setOpcionesExportacion(prev => ({ ...prev, formato }));
+        setModalExportar(true);
+    };
+
+    const ejecutarExportacion = async () => {
+        try {
+            setLoading(true);
+
+            // Mostrar alerta de inicio de exportación
+            await showAlert({
+                title: '📊 Iniciando Exportación',
+                html: `
+                    <div style="text-align: center;">
+                        <p>Preparando reporte de <strong>${opcionesExportacion.tipoReporte}</strong></p>
+                        <div style="margin: 15px 0; padding: 10px; background-color: #e3f2fd; border-radius: 4px;">
+                            <small>🔄 Procesando datos...</small>
+                        </div>
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonText: 'Continuar',
+                confirmButtonColor: '#2196f3',
+                timer: 2000,
+                timerProgressBar: true
+            });
+
+            const response = await fetch('http://localhost:3001/api/reportes/exportar-excel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(opcionesExportacion)
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+
+                const extension = opcionesExportacion.formato === 'excel' ? 'xlsx' : 'pdf';
+                const fileName = `reporte_${opcionesExportacion.tipoReporte}_${new Date().toISOString().split('T')[0]}.${extension}`;
+                a.download = fileName;
+
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                setModalExportar(false);
+
+                // REEMPLAZAR alert() por SweetAlert2
+                await showAlert({
+                    title: '¡Exportación Exitosa! 🎉',
+                    html: `
+                        <div style="text-align: left;">
+                            <p><strong>El reporte ha sido exportado exitosamente:</strong></p>
+                            <ul style="margin: 10px 0; padding-left: 20px;">
+                                <li><strong>Tipo:</strong> ${opcionesExportacion.tipoReporte.charAt(0).toUpperCase() + opcionesExportacion.tipoReporte.slice(1)}</li>
+                                <li><strong>Formato:</strong> ${extension.toUpperCase()}</li>
+                                <li><strong>Archivo:</strong> ${fileName}</li>
+                                <li><strong>Período:</strong> ${opcionesExportacion.fechaDesde} a ${opcionesExportacion.fechaHasta}</li>
+                            </ul>
+                            <div style="margin-top: 15px; padding: 10px; background-color: #d4edda; border-radius: 4px; border-left: 4px solid #28a745;">
+                                <small>✅ El archivo se ha descargado automáticamente</small>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'Perfecto',
+                    confirmButtonColor: '#28a745',
+                    timer: 6000,
+                    timerProgressBar: true
+                });
+
+            } else {
+                throw new Error('Error al exportar el reporte');
+            }
+        } catch (error) {
+            console.error('Error en la exportación:', error);
+            setModalExportar(false);
+
+            // REEMPLAZAR alert() por SweetAlert2 para errores
+            await showAlert({
+                title: 'Error en la Exportación ❌',
+                html: `
+                    <div style="text-align: left;">
+                        <p><strong>No se pudo completar la exportación del reporte:</strong></p>
+                        <div style="margin: 15px 0; padding: 10px; background-color: #f8d7da; border-radius: 4px; border-left: 4px solid #dc3545;">
+                            <small><strong>Error:</strong> ${error.message || 'Error desconocido'}</small>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <p><strong>Posibles soluciones:</strong></p>
+                            <ul style="margin: 5px 0; padding-left: 20px;">
+                                <li>Verifique su conexión a internet</li>
+                                <li>Intente nuevamente en unos momentos</li>
+                                <li>Verifique que el servidor esté funcionando</li>
+                                <li>Contacte al administrador si el problema persiste</li>
+                            </ul>
+                        </div>
+                    </div>
+                `,
+                icon: 'error',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#dc3545',
+                allowOutsideClick: true
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleOpcionExportacion = (campo, valor) => {
+        setOpcionesExportacion(prev => ({
+            ...prev,
+            [campo]: valor
+        }));
+    };
+
+    const handleSeleccionMultiple = (campo, valor, seleccionado) => {
+        setOpcionesExportacion(prev => ({
+            ...prev,
+            [campo]: seleccionado
+                ? [...prev[campo], valor]
+                : prev[campo].filter(id => id !== valor)
+        }));
     };
 
     const renderResumenGeneral = () => (
@@ -372,6 +564,175 @@ function Reportes() {
         </div>
     );
 
+    // MODAL DE EXPORTACIÓN
+    const renderModalExportacion = () => (
+        modalExportar && (
+            <div className="modal-overlay" onClick={() => setModalExportar(false)}>
+                <div className="modal-content exportacion-modal" onClick={e => e.stopPropagation()}>
+                    <div className="modal-header">
+                        <h2>📊 Exportar Reporte</h2>
+                        <button className="close-btn" onClick={() => setModalExportar(false)}>×</button>
+                    </div>
+
+                    <div className="modal-body">
+                        <div className="form-grid">
+                            <div className="form-group">
+                                <label>Tipo de Reporte</label>
+                                <select
+                                    value={opcionesExportacion.tipoReporte}
+                                    onChange={(e) => handleOpcionExportacion('tipoReporte', e.target.value)}
+                                >
+                                    <option value="clientes">Clientes</option>
+                                    <option value="espacios">Espacios</option>
+                                    <option value="servicios">Servicios</option>
+                                    <option value="reservas">Reservas</option>
+                                    <option value="pagos">Pagos</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Formato</label>
+                                <select
+                                    value={opcionesExportacion.formato}
+                                    onChange={(e) => handleOpcionExportacion('formato', e.target.value)}
+                                >
+                                    <option value="excel">Excel (.xlsx)</option>
+                                    <option value="pdf">PDF (.pdf)</option>
+                                </select>
+                            </div>
+
+                            <div className="form-group">
+                                <label>Fecha Desde</label>
+                                <input
+                                    type="date"
+                                    value={opcionesExportacion.fechaDesde}
+                                    onChange={(e) => handleOpcionExportacion('fechaDesde', e.target.value)}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label>Fecha Hasta</label>
+                                <input
+                                    type="date"
+                                    value={opcionesExportacion.fechaHasta}
+                                    onChange={(e) => handleOpcionExportacion('fechaHasta', e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Selectores específicos según tipo de reporte */}
+                        {(opcionesExportacion.tipoReporte === 'clientes' || opcionesExportacion.tipoReporte === 'reservas' || opcionesExportacion.tipoReporte === 'pagos') && (
+                            <div className="form-group">
+                                <label>Clientes Específicos (opcional)</label>
+                                <div className="checkbox-group">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={opcionesExportacion.clienteIds.length === 0}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    handleOpcionExportacion('clienteIds', []);
+                                                }
+                                            }}
+                                        />
+                                        Todos los clientes
+                                    </label>
+                                    {clientesDisponibles.map(cliente => (
+                                        <label key={cliente.id}>
+                                            <input
+                                                type="checkbox"
+                                                checked={opcionesExportacion.clienteIds.includes(cliente.id)}
+                                                onChange={(e) => handleSeleccionMultiple('clienteIds', cliente.id, e.target.checked)}
+                                            />
+                                            {cliente.nombre} ({cliente.rut})
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {(opcionesExportacion.tipoReporte === 'espacios' || opcionesExportacion.tipoReporte === 'reservas' || opcionesExportacion.tipoReporte === 'pagos') && (
+                            <div className="form-group">
+                                <label>Espacios Específicos (opcional)</label>
+                                <div className="checkbox-group">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={opcionesExportacion.espacioIds.length === 0}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    handleOpcionExportacion('espacioIds', []);
+                                                }
+                                            }}
+                                        />
+                                        Todos los espacios
+                                    </label>
+                                    {espaciosDisponibles.map(espacio => (
+                                        <label key={espacio.id}>
+                                            <input
+                                                type="checkbox"
+                                                checked={opcionesExportacion.espacioIds.includes(espacio.id)}
+                                                onChange={(e) => handleSeleccionMultiple('espacioIds', espacio.id, e.target.checked)}
+                                            />
+                                            {espacio.nombre}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {opcionesExportacion.tipoReporte === 'servicios' && (
+                            <div className="form-group">
+                                <label>Servicios Específicos (opcional)</label>
+                                <div className="checkbox-group">
+                                    <label>
+                                        <input
+                                            type="checkbox"
+                                            checked={opcionesExportacion.servicioIds.length === 0}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    handleOpcionExportacion('servicioIds', []);
+                                                }
+                                            }}
+                                        />
+                                        Todos los servicios
+                                    </label>
+                                    {serviciosDisponibles.map(servicio => (
+                                        <label key={servicio.id}>
+                                            <input
+                                                type="checkbox"
+                                                checked={opcionesExportacion.servicioIds.includes(servicio.id)}
+                                                onChange={(e) => handleSeleccionMultiple('servicioIds', servicio.id, e.target.checked)}
+                                            />
+                                            {servicio.nombre}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="modal-footer">
+                        <button
+                            className="btn-secondary"
+                            onClick={() => setModalExportar(false)}
+                            disabled={loading}
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            className="btn-primary"
+                            onClick={ejecutarExportacion}
+                            disabled={loading}
+                        >
+                            {loading ? 'Exportando...' : `Exportar ${opcionesExportacion.formato.toUpperCase()}`}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )
+    );
+
     if (loading) {
         return (
             <div className="section-container">
@@ -421,13 +782,13 @@ function Reportes() {
                         onClick={() => exportarReporte('pdf')}
                         style={{ marginRight: '10px' }}
                     >
-                        📄 PDF
+                        📄 Exportar PDF
                     </button>
                     <button
                         className="btn-secondary"
                         onClick={() => exportarReporte('excel')}
                     >
-                        📊 Excel
+                        📊 Exportar Excel
                     </button>
                 </div>
             </div>
@@ -467,6 +828,9 @@ function Reportes() {
             {tipoReporte === 'resumen' && renderResumenGeneral()}
             {tipoReporte === 'ventas' && renderReporteVentas()}
             {tipoReporte === 'ocupacion' && renderReporteOcupacion()}
+
+            {/* Modal de exportación */}
+            {renderModalExportacion()}
         </div>
     );
 }
