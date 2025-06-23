@@ -17,15 +17,16 @@
 - DigitalOcean (Opcional)
 
 ### Pasos para iniciar el servidor
-# IMPORTANTE
-Ten en consideracion que index.js tiene informacion que se cambia segun el proyecto
 
 # Iniciar servidor (desde la carpeta server)
+npm install exceljs jspdf jspdf-autotable moment
 npm start / nodemon index.js
+
 (npm start funciona en node ya que lo manejo con scripts)
 
 # Iniciar cliente (desde la carpeta cliente)
 npm install (el cliente no tiene dependencias, es necesario installar)
+npm install sweetalert2
 npm start
 
 ```
@@ -33,7 +34,7 @@ npm start
 ## 💾 Script de la Base de Datos
 
 -- MySQL Script for CentroEvento Database
--- Version: 1.0
+-- Version: 1.5
 -- Author: Venjy
 -- Database creation
 CREATE DATABASE IF NOT EXISTS centroevento;
