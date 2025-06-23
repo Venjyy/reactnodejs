@@ -259,17 +259,33 @@ function Reservas() {
     const openModal = (reserva = null) => {
         if (reserva) {
             setSelectedReserva(reserva);
+
+            // Procesar la fecha correctamente
+            let fechaFormateada = '';
+            if (reserva.fechaEvento) {
+                // Si ya viene en formato YYYY-MM-DD, usarla directamente
+                if (typeof reserva.fechaEvento === 'string' && reserva.fechaEvento.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                    fechaFormateada = reserva.fechaEvento;
+                } else {
+                    // Si viene como timestamp o fecha completa, convertirla
+                    const fecha = new Date(reserva.fechaEvento);
+                    if (!isNaN(fecha.getTime())) {
+                        fechaFormateada = fecha.toISOString().split('T')[0];
+                    }
+                }
+            }
+
             setFormData({
-                clienteId: reserva.clienteId,
-                espacioId: reserva.espacioId,
-                fechaEvento: reserva.fechaEvento,
-                horaInicio: reserva.horaInicio,
-                horaFin: reserva.horaFin,
-                tipoEvento: reserva.tipoEvento,
-                numeroPersonas: reserva.numeroPersonas,
-                serviciosSeleccionados: reserva.serviciosSeleccionados || [], // VALIDACIÓN AQUÍ
-                estado: reserva.estado,
-                observaciones: reserva.observaciones,
+                clienteId: reserva.clienteId || '',
+                espacioId: reserva.espacioId || '',
+                fechaEvento: fechaFormateada,
+                horaInicio: reserva.horaInicio || '',
+                horaFin: reserva.horaFin || '',
+                tipoEvento: reserva.tipoEvento || '',
+                numeroPersonas: reserva.numeroPersonas || '',
+                serviciosSeleccionados: reserva.serviciosSeleccionados || [],
+                estado: reserva.estado || 'pendiente',
+                observaciones: reserva.observaciones || '',
                 descuento: reserva.descuento || 0,
                 anticipo: reserva.anticipo || 0
             });
@@ -449,13 +465,32 @@ function Reservas() {
                                             }
                                         </small>
                                     </td>
+
                                     <td>
                                         <div>
                                             <strong>
-                                                {reserva.fechaEvento
-                                                    ? new Date(reserva.fechaEvento + 'T00:00:00').toLocaleDateString('es-CL')
-                                                    : 'Fecha no disponible'
-                                                }
+                                                {reserva.fechaEvento ? (
+                                                    (() => {
+                                                        try {
+                                                            // Si fechaEvento ya es una fecha válida en formato YYYY-MM-DD
+                                                            if (typeof reserva.fechaEvento === 'string' && reserva.fechaEvento.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                                                const [year, month, day] = reserva.fechaEvento.split('-');
+                                                                return `${day}/${month}/${year}`;
+                                                            }
+                                                            // Si es un timestamp o fecha completa
+                                                            const fecha = new Date(reserva.fechaEvento);
+                                                            if (!isNaN(fecha.getTime())) {
+                                                                return fecha.toLocaleDateString('es-CL');
+                                                            }
+                                                            return 'Fecha inválida';
+                                                        } catch (error) {
+                                                            console.error('Error al formatear fecha:', error, reserva.fechaEvento);
+                                                            return 'Fecha inválida';
+                                                        }
+                                                    })()
+                                                ) : (
+                                                    'Fecha no disponible'
+                                                )}
                                             </strong>
                                             <br />
                                             <small>{reserva.horaInicio || '--:--'} - {reserva.horaFin || '--:--'}</small>

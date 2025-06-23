@@ -101,7 +101,13 @@ function Servicios() {
                 },
                 body: JSON.stringify({
                     nombre: formData.nombre,
-                    precio: parseFloat(formData.precio)
+                    precio: parseFloat(formData.precio),
+                    descripcion: formData.descripcion,
+                    categoria: formData.categoria,
+                    disponible: formData.disponible,
+                    proveedorExterno: formData.proveedorExterno,
+                    tiempoPreparacion: formData.tiempoPreparacion,
+                    observaciones: formData.observaciones
                 })
             });
 
@@ -188,11 +194,28 @@ function Servicios() {
     };
 
     const toggleDisponibilidad = async (id) => {
+        setLoading(true);
         try {
-            console.log('Cambiando disponibilidad del servicio:', id);
-            alert('Esta funcionalidad requiere agregar campos adicionales a la tabla servicio en la BD');
+            const response = await fetch(`${API_BASE_URL}/api/servicios/${id}/disponibilidad`, {
+                method: 'PATCH'
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Error al cambiar disponibilidad');
+            }
+
+            const result = await response.json();
+            console.log('Disponibilidad actualizada:', result);
+
+            // Recargar los servicios para mostrar el cambio
+            await loadServicios();
+
         } catch (error) {
             console.error('Error al cambiar disponibilidad:', error);
+            setError(error.message || 'Error al cambiar la disponibilidad del servicio');
+        } finally {
+            setLoading(false);
         }
     };
 

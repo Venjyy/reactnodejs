@@ -6,7 +6,7 @@ function Reportes() {
         ventasPorMes: [],
         espaciosMasReservados: [],
         serviciosMasContratados: [],
-        clientesTopPorIngresos: [],
+        clientesTopIngresos: [], // CAMBIADO: consistente con el backend
         estadisticasGenerales: {}
     });
     const [filtroFecha, setFiltroFecha] = useState({
@@ -15,6 +15,7 @@ function Reportes() {
     });
     const [tipoReporte, setTipoReporte] = useState('resumen');
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     // PRIMER: Declarar loadReporteDataIndividual con useCallback
     const loadReporteDataIndividual = useCallback(async () => {
@@ -40,7 +41,7 @@ function Reportes() {
                 ventasPorMes,
                 espaciosMasReservados,
                 serviciosMasContratados,
-                clientesTopPorIngresos
+                clientesTopIngresos // CAMBIADO: nombre consistente
             ] = await Promise.all([
                 estadisticasRes.ok ? estadisticasRes.json() : {},
                 ventasRes.ok ? ventasRes.json() : [],
@@ -54,7 +55,7 @@ function Reportes() {
                 ventasPorMes,
                 espaciosMasReservados,
                 serviciosMasContratados,
-                clientesTopPorIngresos
+                clientesTopIngresos // CAMBIADO: nombre consistente
             });
 
             console.log('Datos de reportes cargados individualmente desde BD');
@@ -65,7 +66,7 @@ function Reportes() {
                 ventasPorMes: [],
                 espaciosMasReservados: [],
                 serviciosMasContratados: [],
-                clientesTopPorIngresos: [],
+                clientesTopIngresos: [], // CAMBIADO: nombre consistente
                 estadisticasGenerales: {
                     totalIngresos: 0,
                     totalReservas: 0,
@@ -77,12 +78,14 @@ function Reportes() {
                     serviciosContratados: 0
                 }
             });
+            setError('Error al cargar datos de reportes');
         }
-    }, [filtroFecha]); // Agregar filtroFecha como dependencia
+    }, [filtroFecha]);
 
-    // SEGUNDO: Declarar loadReporteData con useCallback DESPUÉS de loadReporteDataIndividual
+    // SEGUNDO: Declarar loadReporteData con useCallback
     const loadReporteData = useCallback(async () => {
         setLoading(true);
+        setError('');
         try {
             console.log('Cargando datos de reportes con filtros:', filtroFecha);
 
@@ -91,22 +94,29 @@ function Reportes() {
             if (response.ok) {
                 const data = await response.json();
                 console.log('Datos de reportes cargados desde BD:', data);
-                setReporteData(data);
+
+                // AGREGADO: Validar y corregir nombres de propiedades
+                const dataCorregida = {
+                    estadisticasGenerales: data.estadisticasGenerales || {},
+                    ventasPorMes: data.ventasPorMes || [],
+                    espaciosMasReservados: data.espaciosMasReservados || [],
+                    serviciosMasContratados: data.serviciosMasContratados || [],
+                    clientesTopIngresos: data.clientesTopIngresos || data.clientesTopPorIngresos || []
+                };
+
+                setReporteData(dataCorregida);
             } else {
                 console.error('Error al cargar datos de reportes:', response.statusText);
-                // Fallback a datos individuales si el endpoint consolidado falla
                 await loadReporteDataIndividual();
             }
         } catch (error) {
             console.error('Error cargando datos de reportes:', error);
-            // Fallback a datos individuales
             await loadReporteDataIndividual();
         } finally {
             setLoading(false);
         }
-    }, [filtroFecha, loadReporteDataIndividual]); // Agregar ambas dependencias
+    }, [filtroFecha, loadReporteDataIndividual]);
 
-    // TERCERO: useEffect después de todas las declaraciones
     useEffect(() => {
         loadReporteData();
     }, [loadReporteData]);
@@ -120,7 +130,6 @@ function Reportes() {
 
     const exportarReporte = (formato) => {
         console.log(`Exportando reporte en formato ${formato}:`, reporteData);
-        // Aquí iría la lógica de exportación
         alert(`Reporte exportado en formato ${formato.toUpperCase()}`);
     };
 
@@ -130,28 +139,28 @@ function Reportes() {
                 <div className="stat-item">
                     <span className="stat-icon">💰</span>
                     <div>
-                        <h3>${(reporteData.estadisticasGenerales.totalIngresos || 0).toLocaleString()}</h3>
+                        <h3>${(reporteData.estadisticasGenerales?.totalIngresos || 0).toLocaleString()}</h3>
                         <p>Ingresos Totales</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📅</span>
                     <div>
-                        <h3>{reporteData.estadisticasGenerales.totalReservas || 0}</h3>
+                        <h3>{reporteData.estadisticasGenerales?.totalReservas || 0}</h3>
                         <p>Total Reservas</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📊</span>
                     <div>
-                        <h3>{reporteData.estadisticasGenerales.tasaOcupacion || 0}%</h3>
+                        <h3>{reporteData.estadisticasGenerales?.tasaOcupacion || 0}%</h3>
                         <p>Tasa de Ocupación</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📈</span>
                     <div>
-                        <h3>{reporteData.estadisticasGenerales.crecimientoMensual >= 0 ? '+' : ''}{reporteData.estadisticasGenerales.crecimientoMensual || 0}%</h3>
+                        <h3>{(reporteData.estadisticasGenerales?.crecimientoMensual || 0) >= 0 ? '+' : ''}{reporteData.estadisticasGenerales?.crecimientoMensual || 0}%</h3>
                         <p>Crecimiento Mensual</p>
                     </div>
                 </div>
@@ -161,7 +170,7 @@ function Reportes() {
                 <div className="reporte-card">
                     <h3>📈 Ventas por Mes</h3>
                     <div className="chart-placeholder">
-                        {reporteData.ventasPorMes.length > 0 ? (
+                        {reporteData.ventasPorMes && reporteData.ventasPorMes.length > 0 ? (
                             <table>
                                 <thead>
                                     <tr>
@@ -189,7 +198,7 @@ function Reportes() {
                 <div className="reporte-card">
                     <h3>🏢 Espacios Más Reservados</h3>
                     <div className="ranking-list">
-                        {reporteData.espaciosMasReservados.length > 0 ? (
+                        {reporteData.espaciosMasReservados && reporteData.espaciosMasReservados.length > 0 ? (
                             reporteData.espaciosMasReservados.map((espacio, index) => (
                                 <div key={index} className="ranking-item">
                                     <div className="ranking-position">#{index + 1}</div>
@@ -219,7 +228,7 @@ function Reportes() {
                 <div className="reporte-card">
                     <h3>🎯 Servicios Más Contratados</h3>
                     <div className="ranking-list">
-                        {reporteData.serviciosMasContratados.length > 0 ? (
+                        {reporteData.serviciosMasContratados && reporteData.serviciosMasContratados.length > 0 ? (
                             reporteData.serviciosMasContratados.map((servicio, index) => (
                                 <div key={index} className="ranking-item">
                                     <div className="ranking-position">#{index + 1}</div>
@@ -241,8 +250,8 @@ function Reportes() {
                 <div className="reporte-card">
                     <h3>👑 Clientes Top por Ingresos</h3>
                     <div className="ranking-list">
-                        {reporteData.clientesTopPorIngresos.length > 0 ? (
-                            reporteData.clientesTopPorIngresos.map((cliente, index) => (
+                        {reporteData.clientesTopIngresos && reporteData.clientesTopIngresos.length > 0 ? (
+                            reporteData.clientesTopIngresos.map((cliente, index) => (
                                 <div key={index} className="ranking-item">
                                     <div className="ranking-position">#{index + 1}</div>
                                     <div className="ranking-info">
@@ -268,7 +277,7 @@ function Reportes() {
             <h3>📊 Reporte Detallado de Ventas</h3>
             <div className="section-content">
                 <div className="data-table">
-                    {reporteData.ventasPorMes.length > 0 ? (
+                    {reporteData.ventasPorMes && reporteData.ventasPorMes.length > 0 ? (
                         <table>
                             <thead>
                                 <tr>
@@ -312,7 +321,7 @@ function Reportes() {
         <div className="reportes-content">
             <h3>🏢 Reporte de Ocupación de Espacios</h3>
             <div className="reportes-grid">
-                {reporteData.espaciosMasReservados.length > 0 ? (
+                {reporteData.espaciosMasReservados && reporteData.espaciosMasReservados.length > 0 ? (
                     reporteData.espaciosMasReservados.map((espacio, index) => (
                         <div key={index} className="space-ocupacion-card">
                             <h4>{espacio.nombre}</h4>
@@ -375,6 +384,19 @@ function Reportes() {
 
     return (
         <div className="section-container">
+            {error && (
+                <div className="error-message" style={{
+                    backgroundColor: '#ffebee',
+                    color: '#c62828',
+                    padding: '10px',
+                    borderRadius: '4px',
+                    marginBottom: '20px',
+                    border: '1px solid #ffcdd2'
+                }}>
+                    {error}
+                </div>
+            )}
+
             <div className="section-header">
                 <div className="header-content">
                     <h1>

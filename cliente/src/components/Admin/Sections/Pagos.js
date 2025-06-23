@@ -61,40 +61,25 @@ function Pagos() {
         setLoading(true);
         setError('');
         try {
+            console.log('Intentando cargar pagos desde:', `${API_BASE_URL}/api/pagos`);
             const response = await fetch(`${API_BASE_URL}/api/pagos`);
 
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Error response:', errorText);
                 throw new Error(`Error ${response.status}: ${response.statusText}`);
             }
 
             const data = await response.json();
             setPagos(data);
-            console.log('Pagos cargados desde la BD:', data);
+            console.log('Pagos cargados exitosamente:', data);
+            setError(''); // Limpiar error si la carga fue exitosa
         } catch (error) {
             console.error('Error cargando pagos:', error);
-            setError('Error al cargar los pagos. Verifique la conexión con el servidor.');
+            setError('No se pudieron cargar los pagos. Verificando conexión...');
 
-            // Fallback a datos mock en caso de error
-            const mockData = [
-                {
-                    id: 1,
-                    reservaId: 1,
-                    clienteNombre: 'Cliente de Prueba',
-                    espacioNombre: 'Espacio de Prueba',
-                    fechaEvento: '2025-06-20',
-                    monto: 100000,
-                    metodoPago: 'Transferencia Bancaria',
-                    fechaPago: '2025-05-15',
-                    tipoPago: 'abono',
-                    estado: 'confirmado',
-                    comprobante: 'PAG-001-2025',
-                    observaciones: 'Datos de prueba - sin conexión a BD',
-                    costoTotal: 200000,
-                    montoPagado: 100000,
-                    saldoPendiente: 100000
-                }
-            ];
-            setPagos(mockData);
+            // No usar datos mock, dejar vacío
+            setPagos([]);
         } finally {
             setLoading(false);
         }
@@ -102,6 +87,7 @@ function Pagos() {
 
     const loadReservas = async () => {
         try {
+            console.log('Intentando cargar reservas desde:', `${API_BASE_URL}/api/reservas-para-pagos`);
             const response = await fetch(`${API_BASE_URL}/api/reservas-para-pagos`);
 
             if (!response.ok) {
@@ -110,27 +96,16 @@ function Pagos() {
 
             const data = await response.json();
             setReservas(data);
-            console.log('Reservas cargadas desde la BD:', data);
+            console.log('Reservas cargadas exitosamente:', data);
         } catch (error) {
             console.error('Error cargando reservas:', error);
-
-            // Fallback a datos mock
-            const mockReservas = [
-                {
-                    id: 1,
-                    clienteNombre: 'Cliente de Prueba',
-                    espacioNombre: 'Espacio de Prueba',
-                    fechaEvento: '2025-06-20',
-                    costoTotal: 200000,
-                    saldoPendiente: 100000
-                }
-            ];
-            setReservas(mockReservas);
+            setReservas([]);
         }
     };
 
     const loadEstadisticas = async () => {
         try {
+            console.log('Intentando cargar estadísticas desde:', `${API_BASE_URL}/api/pagos/estadisticas`);
             const response = await fetch(`${API_BASE_URL}/api/pagos/estadisticas`);
 
             if (!response.ok) {
@@ -139,11 +114,9 @@ function Pagos() {
 
             const data = await response.json();
             setStats(data);
-            console.log('Estadísticas cargadas desde la BD:', data);
+            console.log('Estadísticas cargadas exitosamente:', data);
         } catch (error) {
             console.error('Error cargando estadísticas:', error);
-
-            // Mantener estadísticas por defecto
             setStats({
                 totalIngresos: 0,
                 totalTransacciones: 0,
@@ -181,7 +154,9 @@ function Pagos() {
                 body: JSON.stringify({
                     reservaId: formData.reservaId,
                     monto: parseFloat(formData.monto),
-                    fechaPago: formData.fechaPago
+                    metodoPago: formData.metodoPago,
+                    fechaPago: formData.fechaPago,
+                    observaciones: formData.observaciones
                 })
             });
 
@@ -194,9 +169,9 @@ function Pagos() {
             console.log(selectedPago ? 'Pago actualizado:' : 'Pago creado:', result);
 
             closeModal();
-            await loadPagos(); // Recargar la lista
-            await loadReservas(); // Recargar reservas
-            await loadEstadisticas(); // Recargar estadísticas
+            await loadPagos();
+            await loadReservas();
+            await loadEstadisticas();
 
         } catch (error) {
             console.error('Error al guardar pago:', error);
@@ -213,7 +188,7 @@ function Pagos() {
                 reservaId: pago.reservaId,
                 monto: pago.monto,
                 metodoPago: pago.metodoPago,
-                fechaPago: pago.fechaPago,
+                fechaPago: pago.fechaPago.split('T')[0], // Formatear fecha
                 tipoPago: pago.tipoPago,
                 comprobante: pago.comprobante,
                 observaciones: pago.observaciones
@@ -223,7 +198,7 @@ function Pagos() {
             setFormData({
                 reservaId: '',
                 monto: '',
-                metodoPago: '',
+                metodoPago: 'Efectivo',
                 fechaPago: new Date().toISOString().split('T')[0],
                 tipoPago: 'abono',
                 comprobante: '',
@@ -269,16 +244,6 @@ function Pagos() {
         }
     };
 
-    const confirmarPago = async (id) => {
-        try {
-            console.log('Confirmando pago:', id);
-            // Esta funcionalidad requiere agregar estado a la tabla pago
-            alert('Funcionalidad de confirmación requiere agregar campo "estado" a la tabla pago en la BD');
-        } catch (error) {
-            console.error('Error al confirmar pago:', error);
-        }
-    };
-
     const filteredPagos = pagos.filter(pago => {
         const matchesSearch = pago.clienteNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
             pago.espacioNombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -304,14 +269,14 @@ function Pagos() {
         <div className="section-container">
             {error && (
                 <div className="error-message" style={{
-                    backgroundColor: '#ffebee',
-                    color: '#c62828',
+                    backgroundColor: '#fff3cd',
+                    color: '#856404',
                     padding: '10px',
                     borderRadius: '4px',
                     marginBottom: '20px',
-                    border: '1px solid #ffcdd2'
+                    border: '1px solid #ffeaa7'
                 }}>
-                    {error}
+                    ⚠️ {error}
                 </div>
             )}
 
@@ -337,28 +302,28 @@ function Pagos() {
                 <div className="stat-item">
                     <span className="stat-icon">💰</span>
                     <div>
-                        <h3>${stats.totalIngresos.toLocaleString()}</h3>
+                        <h3>${(stats.totalIngresos || 0).toLocaleString()}</h3>
                         <p>Ingresos Confirmados</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">⏳</span>
                     <div>
-                        <h3>${stats.pagosPendientes.toLocaleString()}</h3>
+                        <h3>${(stats.pagosPendientes || 0).toLocaleString()}</h3>
                         <p>Pagos Pendientes</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📅</span>
                     <div>
-                        <h3>${stats.pagosHoy.toLocaleString()}</h3>
+                        <h3>${(stats.pagosHoy || 0).toLocaleString()}</h3>
                         <p>Cobros Hoy</p>
                     </div>
                 </div>
                 <div className="stat-item">
                     <span className="stat-icon">📊</span>
                     <div>
-                        <h3>{stats.totalTransacciones}</h3>
+                        <h3>{stats.totalTransacciones || 0}</h3>
                         <p>Total Transacciones</p>
                     </div>
                 </div>
@@ -451,7 +416,6 @@ function Pagos() {
                                     </td>
                                     <td>
                                         <div className="action-buttons">
-                                            <button className="btn-view">👁️</button>
                                             <button
                                                 className="btn-edit"
                                                 onClick={() => openModal(pago)}
@@ -467,16 +431,6 @@ function Pagos() {
                                             >
                                                 🗑️
                                             </button>
-                                            {pago.estado === 'pendiente' && (
-                                                <button
-                                                    className="btn-edit"
-                                                    onClick={() => confirmarPago(pago.id)}
-                                                    title="Confirmar pago"
-                                                    disabled={loading}
-                                                >
-                                                    ✅
-                                                </button>
-                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -489,11 +443,13 @@ function Pagos() {
                     <div className="empty-state">
                         <h3>No se encontraron pagos</h3>
                         <p>
-                            {searchTerm
-                                ? 'No hay pagos que coincidan con la búsqueda.'
-                                : 'No hay pagos registrados en la base de datos.'}
+                            {error
+                                ? 'Hay un problema de conexión con el servidor.'
+                                : searchTerm
+                                    ? 'No hay pagos que coincidan con la búsqueda.'
+                                    : 'No hay pagos registrados en la base de datos.'}
                         </p>
-                        {!searchTerm && (
+                        {!searchTerm && !error && (
                             <button className="btn-primary" onClick={() => openModal()}>
                                 Registrar primer pago
                             </button>
@@ -512,6 +468,17 @@ function Pagos() {
                         </div>
                         <form onSubmit={handleSubmit}>
                             <div className="modal-body">
+                                {error && (
+                                    <div className="error-message" style={{
+                                        backgroundColor: '#ffebee',
+                                        color: '#c62828',
+                                        padding: '10px',
+                                        borderRadius: '4px',
+                                        marginBottom: '15px'
+                                    }}>
+                                        {error}
+                                    </div>
+                                )}
                                 <div className="form-row">
                                     <div className="form-group">
                                         <label>Reserva</label>
@@ -570,7 +537,6 @@ function Pagos() {
                                             onChange={handleInputChange}
                                             disabled={loading}
                                         >
-                                            <option value="">Seleccionar método</option>
                                             {metodosPago.map(metodo => (
                                                 <option key={metodo} value={metodo}>
                                                     {metodo}
