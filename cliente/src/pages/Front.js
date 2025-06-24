@@ -6,6 +6,11 @@ import fotorefImage from '../assets/images/fotoref.png';
 import saloninteriorImage from '../assets/images/saloninterior.jpg';
 import cocinaImage from '../assets/images/cocina.jfif';
 import logoImage from '../assets/images/logo.png';
+import campobandera from '../assets/images/campobandera.jfif';
+import campo01 from '../assets/images/campo01.jfif';
+import campo02 from '../assets/images/campo02.jfif';
+import campo03 from '../assets/images/campo03.jfif';
+import bgImage2 from '../assets/images/bg01.jpg';
 
 function Front() {
     // Estados para la sección de reserva
@@ -573,7 +578,7 @@ function Front() {
                 )}
             </section>
 
-            {/* ...existing code... */}
+
             {/* Conócenos - Completamente rediseñado */}
             <section id="conoce">
                 <div className="galeria-container">
@@ -615,6 +620,42 @@ function Front() {
                                 <div className="galeria-text">
                                     <h3>Zona de Juegos</h3>
                                     <p>Espacio seguro y divertido para los más pequeños</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="galeria-item">
+                            <img src={campobandera} alt="Vista del campo con bandera" />
+                            <div className="galeria-overlay">
+                                <div className="galeria-text">
+                                    <h3>Campo Abierto</h3>
+                                    <p>Extensos terrenos para actividades al aire libre</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="galeria-item">
+                            <img src={campo01} alt="Área campestre 1" />
+                            <div className="galeria-overlay">
+                                <div className="galeria-text">
+                                    <h3>Espacio Natural</h3>
+                                    <p>Ambiente campestre ideal para relajarse</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="galeria-item">
+                            <img src={campo02} alt="Área campestre 2" />
+                            <div className="galeria-overlay">
+                                <div className="galeria-text">
+                                    <h3>Paisaje Rural</h3>
+                                    <p>Hermosas vistas del entorno natural</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="galeria-item">
+                            <img src={campo03} alt="Área campestre 3" />
+                            <div className="galeria-overlay">
+                                <div className="galeria-text">
+                                    <h3>Zona Recreativa</h3>
+                                    <p>Perfecta para eventos familiares y celebraciones</p>
                                 </div>
                             </div>
                         </div>
