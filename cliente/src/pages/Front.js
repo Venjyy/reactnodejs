@@ -29,6 +29,22 @@ function Front() {
     const [mensaje, setMensaje] = useState('');
     const [status, setStatus] = useState('');
 
+    // Estados para animaciones del hero con transición mejorada
+    const [currentTextIndex, setCurrentTextIndex] = useState(0);
+    const [currentBgIndex, setCurrentBgIndex] = useState(0);
+    const [transitionState, setTransitionState] = useState('idle'); // 'idle', 'fade-out', 'fade-in', 'fade-complete'
+
+    // Arrays para rotación
+    const textosRotativos = [
+        "Asegura tu lugar con nosotros",
+        "Crea momentos inolvidables",
+        "Vive experiencias únicas",
+        "Tu evento perfecto te espera",
+        "Donde los sueños se hacen realidad"
+    ];
+
+    const backgroundImages = [bgImage, bgImage2];
+
     // Función para formatear RUT automáticamente
     const formatearRut = (valor) => {
         // Remover todos los caracteres que no sean números o K/k
@@ -106,8 +122,11 @@ function Front() {
 
     // Cargar espacios y servicios disponibles al cargar el componente
     useEffect(() => {
-        // Aplicar imagen de fondo dinámicamente
-        document.documentElement.style.setProperty('--hero-bg-image', `url(${bgImage})`);
+        document.title = 'El Patio de Lea - Centro de Eventos';
+
+        // Configurar el background inicial
+        document.documentElement.style.setProperty('--hero-bg-image', `url(${backgroundImages[0]})`);
+        document.documentElement.style.setProperty('--hero-bg-image-next', `url(${backgroundImages[1]})`);
 
         // Cargar espacios desde el backend
         Axios.get('http://localhost:3001/espacios')
@@ -151,6 +170,55 @@ function Front() {
         // Inicializar el contacto con el prefijo
         setContacto('+569 ');
     }, []);
+
+    // Efecto para rotar el texto cada 3 segundos
+    useEffect(() => {
+        const intervalTexto = setInterval(() => {
+            setCurrentTextIndex((prevIndex) =>
+                (prevIndex + 1) % textosRotativos.length
+            );
+        }, 3000);
+
+        return () => clearInterval(intervalTexto);
+    }, [textosRotativos.length]);
+
+    // Efecto mejorado para rotar el background con transición suave
+    useEffect(() => {
+        const intervalBackground = setInterval(() => {
+            // Paso 1: Iniciar fade-out de la imagen actual
+            setTransitionState('fade-out');
+
+            setTimeout(() => {
+                // Paso 2: Fade-in de la nueva imagen
+                setTransitionState('fade-in');
+
+                setTimeout(() => {
+                    // Paso 3: Actualizar las variables CSS en el background
+                    setCurrentBgIndex((prevIndex) => {
+                        const newIndex = (prevIndex + 1) % backgroundImages.length;
+                        const nextIndex = (newIndex + 1) % backgroundImages.length;
+
+                        // Actualizar las variables CSS
+                        document.documentElement.style.setProperty('--hero-bg-image', `url(${backgroundImages[newIndex]})`);
+                        document.documentElement.style.setProperty('--hero-bg-image-next', `url(${backgroundImages[nextIndex]})`);
+
+                        return newIndex;
+                    });
+
+                    // Paso 4: Completar la transición
+                    setTransitionState('fade-complete');
+
+                    setTimeout(() => {
+                        // Paso 5: Resetear para la próxima transición
+                        setTransitionState('idle');
+                    }, 300);
+                }, 1500); // Duración del crossfade
+            }, 500); // Delay antes del fade-in
+        }, 7000); // Intervalo total aumentado para permitir transición completa
+
+        return () => clearInterval(intervalBackground);
+    }, [backgroundImages.length]);
+
 
     // Función para crear un espacio por defecto si no existen
     const crearEspacioPorDefecto = () => {
@@ -331,13 +399,20 @@ function Front() {
                 </div>
             </header>
 
-            {/* Hero */}
-            <section className="hero">
+            {/* Hero con transición crossfade mejorada */}
+            <section className={`hero ${transitionState !== 'idle' ? transitionState : ''} ${transitionState !== 'idle' ? 'transitioning' : ''}`}>
+                <div className="hero-transition-overlay"></div>
+                <div className="hero-decorative-shapes"></div>
                 <div className="overlay"></div>
                 <div className="hero-content">
                     <h1>Reserva en El Patio de Lea</h1>
-                    <p id="textoRotativo" aria-live="polite">Asegura tu lugar con nosotros</p>
-                    <a href="#reservas" className="btn">Agendar ahora</a>
+                    <p id="textoRotativo" aria-live="polite" className="texto-rotativo">
+                        {textosRotativos[currentTextIndex]}
+                    </p>
+                    <a href="#reservas" className="btn btn-hero">
+                        <span className="btn-text">Agendar ahora</span>
+                        <span className="btn-icon">✨</span>
+                    </a>
                 </div>
             </section>
 
@@ -414,7 +489,7 @@ function Front() {
                         <label htmlFor="contacto">Número de contacto</label>
                         <input
                             type="tel"
-                            id="numero-contacto"  // Cambiar este ID
+                            id="numero-contacto"
                             value={contacto}
                             onChange={handleContactoChange}
                             placeholder="+569 12345678"
@@ -577,7 +652,6 @@ function Front() {
                     </div>
                 )}
             </section>
-
 
             {/* Conócenos - Completamente rediseñado */}
             <section id="conoce">
