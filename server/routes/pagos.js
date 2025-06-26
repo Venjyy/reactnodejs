@@ -93,8 +93,8 @@ router.post('/pagos', (req, res) => {
 
             // Crear el pago
             const insertQuery = `
-                INSERT INTO pago (reserva_id, monto_total, abono, metodo_pago, fecha_pago, observaciones)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO pago (reserva_id, monto_total, abono, metodo_pago, tipo_pago, fecha_pago, observaciones)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             `;
 
             connection.query(insertQuery, [
@@ -102,6 +102,7 @@ router.post('/pagos', (req, res) => {
                 monto,
                 monto,
                 metodoPago || 'Efectivo',
+                tipoPago || 'abono',
                 fechaPago,
                 observaciones || ''
             ], (err, result) => {
@@ -141,6 +142,7 @@ router.get('/pagos', (req, res) => {
             p.id,
             p.abono as monto,
             COALESCE(p.metodo_pago, 'Efectivo') as metodoPago,
+            COALESCE(p.tipo_pago, 'abono') as tipoPago,
             DATE(p.fecha_pago) as fechaPago,
             COALESCE(p.observaciones, '') as observaciones,
             p.fecha_creacion,
@@ -219,7 +221,7 @@ router.get('/pagos', (req, res) => {
                             monto: parseFloat(pago.monto) || 0,
                             metodoPago: pago.metodoPago || 'Efectivo',
                             fechaPago: fechaFormateada,
-                            tipoPago: 'abono',
+                            tipoPago: pago.tipoPago || 'abono',
                             estado: 'confirmado',
                             comprobante: '',
                             observaciones: pago.observaciones || '',
@@ -440,7 +442,7 @@ router.put('/pagos/:id', (req, res) => {
             // Actualizar el pago
             const updateQuery = `
                 UPDATE pago 
-                SET monto_total = ?, abono = ?, metodo_pago = ?, fecha_pago = ?, observaciones = ?
+                SET monto_total = ?, abono = ?, metodo_pago = ?, tipo_pago = ?, fecha_pago = ?, observaciones = ?
                 WHERE id = ?
             `;
 
@@ -448,6 +450,7 @@ router.put('/pagos/:id', (req, res) => {
                 monto,
                 monto,
                 metodoPago || 'Efectivo',
+                tipoPago || 'abono',
                 fechaPago,
                 observaciones || '',
                 id

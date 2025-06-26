@@ -79,23 +79,7 @@ function Servicios() {
         } catch (error) {
             console.error('Error cargando servicios:', error);
             setError('Error al cargar los servicios. Verifique la conexión con el servidor.');
-
-            // Fallback a datos mock en caso de error
-            const mockData = [
-                {
-                    id: 1,
-                    nombre: 'Servicio de Catering Premium',
-                    descripcion: 'Menú completo para 50 personas con entrada, plato principal y postre',
-                    precio: 450000,
-                    categoria: 'Catering',
-                    disponible: true,
-                    proveedorExterno: false,
-                    tiempoPreparacion: '2 días',
-                    observaciones: 'Incluye meseros y vajilla - Datos de prueba sin conexión a BD',
-                    reservasActivas: 0
-                }
-            ];
-            setServicios(mockData);
+            setServicios([]);
         } finally {
             setLoading(false);
         }

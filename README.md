@@ -30,8 +30,7 @@ npm install sweetalert2
 npm start
 
 ```
-
-## 💾 Script de la Base de Datos
+### 🆕 Script Completo para Nueva Instalación
 
 -- MySQL Script for CentroEvento Database
 -- Version: 1.5
@@ -75,11 +74,17 @@ CREATE TABLE `espacio` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Services table
+-- Services table (ACTUALIZADA con todas las columnas necesarias)
 CREATE TABLE `servicio` (
   `id` int NOT NULL AUTO_INCREMENT,
   `nombre` varchar(50) NOT NULL,
   `costo` decimal(10,2) NOT NULL,
+  `descripcion` text,
+  `categoria` varchar(50) DEFAULT 'Otros',
+  `disponible` tinyint(1) DEFAULT '1',
+  `proveedor_externo` tinyint(1) DEFAULT '0',
+  `tiempo_preparacion` varchar(50) DEFAULT '1 día',
+  `observaciones` text,
   `fecha_creacion` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -104,19 +109,21 @@ CREATE TABLE `reserva` (
   CONSTRAINT `reserva_chk_2` CHECK ((`cantidad_personas` > 0))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Payments table (ACTUALIZADA con las nuevas columnas)
+-- Payments table (ACTUALIZADA con las nuevas columnas - INCLUYE TIPO_PAGO)
 CREATE TABLE `pago` (
   `id` int NOT NULL AUTO_INCREMENT,
   `monto_total` decimal(10,2) NOT NULL,
   `abono` decimal(10,2) NOT NULL,
   `metodo_pago` varchar(50) DEFAULT 'Efectivo',
+  `tipo_pago` varchar(20) DEFAULT 'abono',
   `observaciones` text,
   `fecha_pago` datetime NOT NULL,
   `reserva_id` int NOT NULL,
   `fecha_creacion` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `reserva_id` (`reserva_id`),
-  CONSTRAINT `pago_ibfk_1` FOREIGN KEY (`reserva_id`) REFERENCES `reserva` (`id`)
+  CONSTRAINT `pago_ibfk_1` FOREIGN KEY (`reserva_id`) REFERENCES `reserva` (`id`),
+  CONSTRAINT `pago_chk_tipo` CHECK ((`tipo_pago` in ('anticipo','abono','pago_total','saldo_final')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Reservation-Services relationship table
@@ -170,21 +177,21 @@ INSERT INTO `espacio` VALUES
 (13,'lugarepico',12,12312.00,'epicolugar',1,'2025-06-08 16:07:54'),
 (14,'Casa principal',100,120000.00,'Casa principal realizada con madera tipica chilena',1,'2025-06-09 22:59:46');
 
--- Sample data for services
+-- Sample data for services (ACTUALIZADA con las nuevas columnas)
 INSERT INTO `servicio` VALUES 
-(1,'Catering Básico',15000.00,'2025-06-06 18:56:49'),
-(2,'Catering Premium',25000.00,'2025-06-06 18:56:49'),
-(3,'Decoración Simple',20000.00,'2025-06-06 18:56:49'),
-(4,'Decoración Temática',40000.00,'2025-06-06 18:56:49'),
-(5,'Sistema de Sonido',30000.00,'2025-06-06 18:56:49'),
-(6,'Iluminación Profesional',35000.00,'2025-06-06 18:56:49'),
-(7,'Animador Infantil',25000.00,'2025-06-06 18:56:49'),
-(8,'Fotógrafo Profesional',40000.00,'2025-06-06 18:56:49'),
-(9,'Barra de Bebidas',30000.00,'2025-06-06 18:56:49'),
-(10,'Seguridad Privada',35000.00,'2025-06-06 18:56:49'),
-(11,'Ambientación Musical',20000.00,'2025-06-06 18:56:49'),
-(12,'Pantalla Gigante',45000.00,'2025-06-06 18:56:49'),
-(16,'Pinta Caritas',12000.00,'2025-06-09 23:00:46');
+(1,'Catering Básico',15000.00,'Servicio de catering con menú básico para eventos','Catering',1,0,'2 días','Incluye entrada, plato principal y postre','2025-06-06 18:56:49'),
+(2,'Catering Premium',25000.00,'Servicio de catering premium con menú gourmet','Catering',1,0,'3 días','Incluye cocktail, entrada, plato principal, postre y café','2025-06-06 18:56:49'),
+(3,'Decoración Simple',20000.00,'Decoración básica para eventos con elementos estándar','Decoración',1,1,'1 día','Incluye manteles, centros de mesa y globos','2025-06-06 18:56:49'),
+(4,'Decoración Temática',40000.00,'Decoración personalizada según temática del evento','Decoración',1,1,'5 días','Decoración completa según tema elegido','2025-06-06 18:56:49'),
+(5,'Sistema de Sonido',30000.00,'Equipo de sonido profesional con micrófono','Sonido y Música',1,1,'1 día','Incluye mezcladora, parlantes y microfonía','2025-06-06 18:56:49'),
+(6,'Iluminación Profesional',35000.00,'Sistema de iluminación LED profesional','Iluminación',1,1,'2 días','Luces LED multicolor con control automático','2025-06-06 18:56:49'),
+(7,'Animador Infantil',25000.00,'Animación profesional para eventos infantiles','Animación',1,1,'1 día','Incluye juegos, música y actividades para niños','2025-06-06 18:56:49'),
+(8,'Fotógrafo Profesional',40000.00,'Servicio de fotografía profesional para eventos','Fotografía',1,1,'1 día','Cobertura completa del evento con entrega digital','2025-06-06 18:56:49'),
+(9,'Barra de Bebidas',30000.00,'Servicio de bar con bartender profesional','Catering',1,1,'1 día','Incluye bebidas alcohólicas y sin alcohol','2025-06-06 18:56:49'),
+(10,'Seguridad Privada',35000.00,'Servicio de seguridad para eventos grandes','Otros',1,1,'1 día','Personal de seguridad certificado','2025-06-06 18:56:49'),
+(11,'Ambientación Musical',20000.00,'DJ profesional con equipo de música','Sonido y Música',1,1,'1 día','DJ con amplio repertorio musical','2025-06-06 18:56:49'),
+(12,'Pantalla Gigante',45000.00,'Proyección en pantalla LED de gran formato','Otros',1,1,'2 días','Pantalla LED para presentaciones y videos','2025-06-06 18:56:49'),
+(16,'Pinta Caritas',12000.00,'Servicio de pintura facial para niños','Animación',1,1,'1 día','Artista especializada en pintura facial infantil','2025-06-09 23:00:46');
 
 -- Sample data for reservations
 INSERT INTO `reserva` VALUES 
@@ -211,26 +218,26 @@ INSERT INTO `reserva` VALUES
 (21,'2027-12-10 10:12:00','confirmada',12,'Cumpleaños',14,8,'2025-06-09 00:44:59','2025-06-09 17:37:39'),
 (23,'2028-12-10 12:00:00','pendiente',25,'Cumpleaños Benjamin',20,2,'2025-06-09 22:57:19','2025-06-09 22:57:19');
 
--- Sample data for payments (ACTUALIZADA con las nuevas columnas)
+-- Sample data for payments (ACTUALIZADA con tipo_pago)
 INSERT INTO `pago` VALUES 
-(1,455000.00,455000.00,'Efectivo','Pago completo del evento','2023-11-10 10:30:00',1,'2025-06-06 18:56:49'),
-(2,255000.00,127500.00,'Transferencia Bancaria','Anticipo del 50%','2023-11-15 11:45:00',2,'2025-06-06 18:56:49'),
-(3,270000.00,135000.00,'Tarjeta de Crédito','Primer abono','2023-11-20 09:15:00',3,'2025-06-06 18:56:49'),
-(4,150000.00,150000.00,'Efectivo','Pago al contado','2023-11-25 16:20:00',4,'2025-06-06 18:56:49'),
-(5,540000.00,270000.00,'Transferencia Bancaria','50% de anticipo','2023-11-30 14:10:00',5,'2025-06-06 18:56:49'),
-(6,190000.00,95000.00,'Efectivo','Seña del evento','2023-12-05 12:30:00',6,'2025-06-06 18:56:49'),
-(7,310000.00,310000.00,'Cheque','Pago total anticipado','2023-12-10 10:15:00',7,'2025-06-06 18:56:49'),
-(8,495000.00,247500.00,'Transferencia Bancaria','Anticipo boda','2023-12-15 15:45:00',8,'2025-06-06 18:56:49'),
-(9,195000.00,97500.00,'Tarjeta de Débito','Abono inicial','2023-12-20 11:20:00',9,'2025-06-06 18:56:49'),
-(10,520000.00,260000.00,'Efectivo','50% del total','2023-12-25 09:30:00',10,'2025-06-06 18:56:49'),
-(11,120000.00,60000.00,'Transferencia Bancaria','Primer pago','2024-01-05 14:15:00',11,'2025-06-06 18:56:49'),
-(12,225000.00,225000.00,'Efectivo','Pago completo','2024-01-10 17:30:00',12,'2025-06-06 18:56:49'),
-(13,300000.00,150000.00,'Tarjeta de Crédito','Anticipo 50%','2024-01-15 10:45:00',13,'2025-06-06 18:56:49'),
-(14,235000.00,117500.00,'Transferencia Bancaria','Seña del evento','2024-01-20 13:20:00',14,'2025-06-06 18:56:49'),
-(15,375000.00,375000.00,'Efectivo','Pago total graduación','2024-01-25 16:10:00',15,'2025-06-06 18:56:49'),
-(16,300000.00,150000.00,'Transferencia Bancaria','Abono cumpleaños','2025-06-08 00:00:00',18,'2025-06-08 16:11:19'),
-(17,150000.00,100000.00,'Efectivo','Anticipo evento','2025-06-09 00:00:00',16,'2025-06-09 00:45:24'),
-(18,305000.00,150000.00,'Transferencia Bancaria','Primer pago Benjamin','2025-06-10 00:00:00',23,'2025-06-09 23:02:26');
+(1,455000.00,455000.00,'Efectivo','pago_total','Pago completo del evento','2023-11-10 10:30:00',1,'2025-06-06 18:56:49'),
+(2,255000.00,127500.00,'Transferencia Bancaria','anticipo','Anticipo del 50%','2023-11-15 11:45:00',2,'2025-06-06 18:56:49'),
+(3,270000.00,135000.00,'Tarjeta de Crédito','abono','Primer abono','2023-11-20 09:15:00',3,'2025-06-06 18:56:49'),
+(4,150000.00,150000.00,'Efectivo','pago_total','Pago al contado','2023-11-25 16:20:00',4,'2025-06-06 18:56:49'),
+(5,540000.00,270000.00,'Transferencia Bancaria','anticipo','50% de anticipo','2023-11-30 14:10:00',5,'2025-06-06 18:56:49'),
+(6,190000.00,95000.00,'Efectivo','anticipo','Seña del evento','2023-12-05 12:30:00',6,'2025-06-06 18:56:49'),
+(7,310000.00,310000.00,'Cheque','pago_total','Pago total anticipado','2023-12-10 10:15:00',7,'2025-06-06 18:56:49'),
+(8,495000.00,247500.00,'Transferencia Bancaria','anticipo','Anticipo boda','2023-12-15 15:45:00',8,'2025-06-06 18:56:49'),
+(9,195000.00,97500.00,'Tarjeta de Débito','anticipo','Abono inicial','2023-12-20 11:20:00',9,'2025-06-06 18:56:49'),
+(10,520000.00,260000.00,'Efectivo','anticipo','50% del total','2023-12-25 09:30:00',10,'2025-06-06 18:56:49'),
+(11,120000.00,60000.00,'Transferencia Bancaria','anticipo','Primer pago','2024-01-05 14:15:00',11,'2025-06-06 18:56:49'),
+(12,225000.00,225000.00,'Efectivo','pago_total','Pago completo','2024-01-10 17:30:00',12,'2025-06-06 18:56:49'),
+(13,300000.00,150000.00,'Tarjeta de Crédito','anticipo','Anticipo 50%','2024-01-15 10:45:00',13,'2025-06-06 18:56:49'),
+(14,235000.00,117500.00,'Transferencia Bancaria','anticipo','Seña del evento','2024-01-20 13:20:00',14,'2025-06-06 18:56:49'),
+(15,375000.00,375000.00,'Efectivo','pago_total','Pago total graduación','2024-01-25 16:10:00',15,'2025-06-06 18:56:49'),
+(16,300000.00,150000.00,'Transferencia Bancaria','abono','Abono cumpleaños','2025-06-08 00:00:00',18,'2025-06-08 16:11:19'),
+(17,150000.00,100000.00,'Efectivo','anticipo','Anticipo evento','2025-06-09 00:00:00',16,'2025-06-09 00:45:24'),
+(18,305000.00,150000.00,'Transferencia Bancaria','abono','Primer pago Benjamin','2025-06-10 00:00:00',23,'2025-06-09 23:02:26');
 
 -- Sample data for reservation-services relationship
 INSERT INTO `reserva_servicio` VALUES 
@@ -239,6 +246,8 @@ INSERT INTO `reserva_servicio` VALUES
 (14,5),(15,5),(17,5),(1,6),(5,6),(7,6),(8,6),(10,6),(15,6),(17,6),(2,7),(9,7),(1,8),(8,8),
 (15,8),(19,8),(23,8),(4,9),(6,9),(13,9),(23,9),(18,10),(20,10),(3,11),(5,11),(12,11),(17,11),
 (19,11),(20,11),(21,11),(23,11),(7,12),(10,12),(14,12),(17,12),(18,12),(23,12);
+
+
 
 ## 📋 Funcionalidades
 

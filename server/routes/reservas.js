@@ -226,7 +226,7 @@ router.get('/reservas/espacios', (req, res) => {
 router.get('/reservas/servicios', (req, res) => {
     console.log('Endpoint /api/reservas/servicios llamado');
 
-    const query = 'SELECT id, nombre, costo as precio FROM servicio WHERE disponible = true ORDER BY nombre';
+    const query = 'SELECT id, nombre, costo as precio FROM servicio ORDER BY nombre';
 
     connection.query(query, (err, results) => {
         if (err) {
