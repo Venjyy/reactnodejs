@@ -1,3 +1,6 @@
+// Cargar variables de entorno
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 
@@ -13,6 +16,7 @@ const serviciosRoutes = require('./routes/servicios');
 const reservasRoutes = require('./routes/reservas');
 const pagosRoutes = require('./routes/pagos');
 const reportesRoutes = require('./routes/reportes');
+const climaRoutes = require('./routes/clima');
 
 const app = express();
 
@@ -111,13 +115,15 @@ app.use('/api', serviciosRoutes);
 app.use('/api', reservasRoutes);
 app.use('/api', pagosRoutes);
 app.use('/api', reportesRoutes);
+app.use('/api/clima', climaRoutes);
 
 // Rutas directas para compatibilidad con frontend existente
 app.use('/', clientesRoutes);  // Para /clientes
 app.use('/', reservasRoutes);  // Para /crearReserva
 
 // Puerto del servidor
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`API de clima configurada: ${!!process.env.OPENWEATHER_API_KEY}`);
 });

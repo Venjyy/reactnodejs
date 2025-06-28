@@ -1663,6 +1663,33 @@ footer p {
     transform: none !important;
 }
 
+.btn-clima {
+    padding: 15px 20px !important;
+    background: linear-gradient(135deg, #4ECDC4, #44A08D) !important;
+    color: var(--text-white) !important;
+    border: none !important;
+    border-radius: 15px !important;
+    font-size: 18px !important;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    min-width: auto !important;
+    width: auto !important;
+    margin: 0 !important;
+    margin-left: 10px !important;
+}
+
+.btn-clima:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, #44A08D, #4ECDC4) !important;
+}
+
+.btn-clima:disabled {
+    background: #ccc !important;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
 .calendario-container {
     margin-top: 20px;
     background: var(--bg-white);

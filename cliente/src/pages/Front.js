@@ -3,6 +3,7 @@ import Axios from 'axios';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import '../styles/Front.css'; // Asegúrate de tener este archivo CSS
+import Swal from 'sweetalert2';
 import bgImage from '../assets/images/bg.jpg';
 import fotorefImage from '../assets/images/fotoref.png';
 import saloninteriorImage from '../assets/images/saloninterior.jpg';
@@ -43,6 +44,10 @@ function Front() {
     const [currentBgIndex, setCurrentBgIndex] = useState(0);
     const [transitionState, setTransitionState] = useState('idle'); // 'idle', 'fade-out', 'fade-in', 'fade-complete'
 
+    // Estados para el clima
+    const [cacheClima, setCacheClima] = useState(new Map()); // Cache para evitar llamadas innecesarias
+    const [cargandoClima, setCargandoClima] = useState(false);
+
     // Arrays para rotación
     const textosRotativos = [
         "Asegura tu lugar con nosotros",
@@ -53,6 +58,166 @@ function Front() {
     ];
 
     const backgroundImages = [bgImage, bgImage2];
+
+    // Función para obtener el pronóstico del clima desde nuestro backend seguro
+    const obtenerPronosticoClima = async (fecha) => {
+        if (!fecha) return null;
+
+        const fechaClave = fecha.toISOString().split('T')[0];
+
+        // Verificar cache primero
+        if (cacheClima.has(fechaClave)) {
+            console.log('Usando datos del cache local para:', fechaClave);
+            return cacheClima.get(fechaClave);
+        }
+
+        setCargandoClima(true);
+
+        try {
+            console.log(`Consultando pronóstico del clima para: ${fechaClave}`);
+
+            // Llamar a nuestro backend seguro
+            const response = await Axios.get(`http://localhost:3001/api/clima/pronostico/${fechaClave}`);
+
+            if (response.data.success) {
+                const datosClima = response.data.data;
+
+                // Guardar en cache local
+                const nuevoCache = new Map(cacheClima);
+                nuevoCache.set(fechaClave, datosClima);
+                setCacheClima(nuevoCache);
+
+                console.log(`Pronóstico obtenido exitosamente:`, datosClima);
+                return datosClima;
+            } else {
+                throw new Error(response.data.error || 'Error al obtener datos del clima');
+            }
+
+        } catch (error) {
+            console.error('Error al obtener pronóstico del clima:', error);
+
+            // Manejar diferentes tipos de errores
+            if (error.response) {
+                // Error del servidor backend
+                if (error.response.status === 503) {
+                    console.error('Servicio de clima temporalmente no disponible');
+                } else if (error.response.status === 404) {
+                    console.error('No se encontraron datos para esta ubicación');
+                } else {
+                    console.error('Error del servidor:', error.response.data?.error);
+                }
+            } else if (error.request) {
+                // Error de conexión con el backend
+                console.error('Error de conexión con el servidor');
+            } else {
+                // Otro tipo de error
+                console.error('Error inesperado:', error.message);
+            }
+
+            return null;
+        } finally {
+            setCargandoClima(false);
+        }
+    };
+
+    // Función para mostrar el pronóstico con SweetAlert
+    const mostrarPronosticoClima = async (fecha) => {
+        if (!fecha) return;
+
+        const datosClima = await obtenerPronosticoClima(fecha);
+
+        if (!datosClima) {
+            Swal.fire({
+                title: '🌤️ Pronóstico del Clima',
+                text: 'No se pudo obtener información del clima para esta fecha. Por favor, intenta más tarde.',
+                icon: 'warning',
+                confirmButtonText: 'Entendido',
+                confirmButtonColor: '#4CAF50'
+            });
+            return;
+        }
+
+        const fechaFormateada = fecha.toLocaleDateString('es-CL', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        const iconoUrl = `https://openweathermap.org/img/wn/${datosClima.icono}@2x.png`;
+
+        let mensajeTipo = '';
+        if (datosClima.tipo === 'estimado') {
+            mensajeTipo = '<p style="font-size: 0.9em; color: #666; margin-top: 10px;"><em>* Para fechas lejanas mostramos una estimación basada en el clima actual de la zona</em></p>';
+        }
+
+        Swal.fire({
+            title: '🌤️ Pronóstico del Clima',
+            html: `
+                <div style="text-align: center;">
+                    <p style="font-size: 1.1em; margin-bottom: 15px;">
+                        <strong>${fechaFormateada}</strong><br>
+                        <span style="color: #666;">${datosClima.ciudad}</span>
+                    </p>
+                    
+                    <div style="display: flex; align-items: center; justify-content: center; margin: 20px 0;">
+                        <img src="${iconoUrl}" alt="Clima" style="width: 64px; height: 64px;">
+                        <div style="margin-left: 15px; text-align: left;">
+                            <div style="font-size: 2em; font-weight: bold; color: #2196F3;">
+                                ${datosClima.temperatura}°C
+                            </div>
+                            <div style="font-size: 1.1em; text-transform: capitalize; color: #333;">
+                                ${datosClima.descripcion}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; text-align: left;">
+                        <div style="background: #f5f5f5; padding: 10px; border-radius: 8px;">
+                            <div style="font-weight: bold; color: #555;">💧 Humedad</div>
+                            <div style="font-size: 1.2em; color: #2196F3;">${datosClima.humedad}%</div>
+                        </div>
+                        <div style="background: #f5f5f5; padding: 10px; border-radius: 8px;">
+                            <div style="font-weight: bold; color: #555;">💨 Viento</div>
+                            <div style="font-size: 1.2em; color: #2196F3;">${datosClima.viento} m/s</div>
+                        </div>
+                    </div>
+                    
+                    ${datosClima.tipo === 'forecast' ? `
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; text-align: left;">
+                        <div style="background: #e3f2fd; padding: 10px; border-radius: 8px;">
+                            <div style="font-weight: bold; color: #555;">🌧️ Prob. Lluvia</div>
+                            <div style="font-size: 1.2em; color: #2196F3;">${datosClima.probabilidad_lluvia}%</div>
+                        </div>
+                        <div style="background: #e3f2fd; padding: 10px; border-radius: 8px;">
+                            <div style="font-weight: bold; color: #555;">☔ Precipitación</div>
+                            <div style="font-size: 1.2em; color: #2196F3;">${datosClima.precipitacion} mm</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    
+                    ${datosClima.precipitacion > 0 || datosClima.nieve > 0 ? `
+                    <div style="background: #fff3e0; padding: 12px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #ff9800;">
+                        <div style="font-weight: bold; color: #f57c00; margin-bottom: 5px;">⚠️ Condiciones de Precipitación</div>
+                        ${datosClima.precipitacion > 0 ? `<div style="color: #555;">• Lluvia esperada: ${datosClima.precipitacion} mm</div>` : ''}
+                        ${datosClima.nieve > 0 ? `<div style="color: #555;">• Nieve esperada: ${datosClima.nieve} mm</div>` : ''}
+                        <div style="font-size: 0.9em; color: #666; margin-top: 5px;">Considera tener un plan alternativo bajo techo</div>
+                    </div>
+                    ` : ''}
+                    
+                    ${mensajeTipo}
+                    
+                    <p style="font-size: 0.9em; color: #888; margin-top: 15px;">
+                        ℹ️ Esta información te ayudará a planificar mejor tu evento
+                    </p>
+                </div>
+            `,
+            confirmButtonText: 'Perfecto, gracias',
+            confirmButtonColor: '#4CAF50',
+            width: '450px',
+            padding: '20px'
+        });
+    };
 
     // Función para formatear RUT automáticamente
     const formatearRut = (valor) => {
@@ -242,7 +407,7 @@ function Front() {
     };
 
     // Manejar selección de fecha en el calendario
-    const manejarSeleccionFecha = (fecha) => {
+    const manejarSeleccionFecha = async (fecha) => {
         // Validar que la fecha no esté deshabilitada
         if (esFechaDeshabilitada({ date: fecha, view: 'month' })) {
             console.log('Fecha deshabilitada seleccionada:', fecha);
@@ -282,6 +447,9 @@ function Front() {
 
         // Limpiar servicios seleccionados para evitar conflictos
         setServiciosSeleccionados([]);
+
+        // Mostrar pronóstico del clima para la fecha seleccionada
+        await mostrarPronosticoClima(fecha);
     };
 
     // Manejar cambio de espacio
@@ -351,6 +519,19 @@ function Front() {
         // Inicializar el contacto con el prefijo
         setContacto('+569 ');
     }, []);
+
+    // Efecto para limpiar el caché del clima si crece demasiado
+    useEffect(() => {
+        if (cacheClima.size > 50) {
+            // Mantener solo las últimas 25 entradas más recientes
+            const entradasOrdenadas = Array.from(cacheClima.entries())
+                .sort((a, b) => new Date(b[0]) - new Date(a[0]))
+                .slice(0, 25);
+
+            setCacheClima(new Map(entradasOrdenadas));
+            console.log('Cache del clima optimizado, entradas mantenidas:', entradasOrdenadas.length);
+        }
+    }, [cacheClima]);
 
     // Efecto para rotar el texto cada 3 segundos
     useEffect(() => {
@@ -747,6 +928,17 @@ function Front() {
                             >
                                 📅
                             </button>
+                            {fechaSeleccionada && (
+                                <button
+                                    type="button"
+                                    className="btn-clima"
+                                    onClick={() => mostrarPronosticoClima(fechaSeleccionada)}
+                                    disabled={cargandoClima}
+                                    title="Ver pronóstico del clima"
+                                >
+                                    {cargandoClima ? '⏳' : '🌤️'}
+                                </button>
+                            )}
                         </div>
 
                         {mostrarCalendario && espacioId && (
@@ -814,6 +1006,13 @@ function Front() {
                         {!espacioId && (
                             <small style={{ color: '#ff6b6b', fontSize: '0.85em' }}>
                                 ⚠️ Primero selecciona un espacio para ver la disponibilidad del calendario
+                            </small>
+                        )}
+
+                        {cargandoClima && (
+                            <small style={{ color: '#4ECDC4', fontSize: '0.85em', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                <span>🌤️</span>
+                                <span>Consultando pronóstico del clima...</span>
                             </small>
                         )}
                     </div>
