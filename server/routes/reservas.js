@@ -15,84 +15,118 @@ router.post('/api/reservas-publicas', (req, res) => {
         });
     }
 
-    // Verificar si el cliente ya existe
-    connection.query('SELECT id FROM cliente WHERE rut = ?', [rut], (err, clienteResults) => {
+    // Validar que la fecha no sea pasada o sea hoy
+    const fechaReserva = new Date(fecha);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    fechaReserva.setHours(0, 0, 0, 0);
+
+    if (fechaReserva <= hoy) {
+        return res.status(400).json({
+            error: 'Solo se pueden hacer reservas para fechas futuras (a partir de mañana)'
+        });
+    }
+
+    // Verificar si ya existe una reserva para esa fecha y espacio
+    const queryVerificarDisponibilidad = `
+        SELECT id FROM reserva 
+        WHERE espacio_id = ? 
+        AND DATE(fecha_reserva) = ? 
+        AND estado != 'cancelada'
+        LIMIT 1
+    `;
+
+    connection.query(queryVerificarDisponibilidad, [espacioId, fecha], (err, existeReserva) => {
         if (err) {
-            console.error('Error al verificar cliente:', err);
-            return res.status(500).json({ error: 'Error al verificar cliente' });
+            console.error('Error al verificar disponibilidad:', err);
+            return res.status(500).json({ error: 'Error al verificar disponibilidad' });
         }
 
-        let clienteId;
-
-        const crearReserva = (clienteId) => {
-            // Crear la reserva
-            const fechaHoraReserva = `${fecha} ${horario || '00:00:00'}`;
-            const queryReserva = `
-                INSERT INTO reserva (cliente_id, espacio_id, fecha_reserva, cantidad_personas, razon, estado)
-                VALUES (?, ?, ?, ?, ?, 'pendiente')
-            `;
-
-            connection.query(queryReserva, [clienteId, espacioId, fechaHoraReserva, personas, razon], (err, resultReserva) => {
-                if (err) {
-                    console.error('Error al crear reserva:', err);
-                    return res.status(500).json({ error: 'Error al crear la reserva' });
-                }
-
-                const reservaId = resultReserva.insertId;
-
-                // Agregar servicios si los hay
-                if (servicios && servicios.length > 0) {
-                    const serviciosPromises = servicios.map(servicioId => {
-                        return new Promise((resolve, reject) => {
-                            const queryServicio = 'INSERT INTO reserva_servicio (reserva_id, servicio_id) VALUES (?, ?)';
-                            connection.query(queryServicio, [reservaId, servicioId], (err) => {
-                                if (err) reject(err);
-                                else resolve();
-                            });
-                        });
-                    });
-
-                    Promise.all(serviciosPromises)
-                        .then(() => {
-                            console.log('Reserva pública creada con ID:', reservaId);
-                            res.status(201).json({
-                                message: 'Reserva creada correctamente',
-                                reservaId: reservaId,
-                                estado: 'pendiente'
-                            });
-                        })
-                        .catch(err => {
-                            console.error('Error al agregar servicios:', err);
-                            res.status(500).json({ error: 'Error al agregar servicios a la reserva' });
-                        });
-                } else {
-                    console.log('Reserva pública creada con ID:', reservaId);
-                    res.status(201).json({
-                        message: 'Reserva creada correctamente',
-                        reservaId: reservaId,
-                        estado: 'pendiente'
-                    });
-                }
+        if (existeReserva.length > 0) {
+            return res.status(400).json({
+                error: 'Esta fecha ya está ocupada para el espacio seleccionado'
             });
-        };
+        }
 
-        if (clienteResults.length > 0) {
-            // El cliente ya existe
-            clienteId = clienteResults[0].id;
-            crearReserva(clienteId);
-        } else {
-            // Crear nuevo cliente
-            const queryCliente = 'INSERT INTO cliente (nombre, rut, correo, telefono) VALUES (?, ?, ?, ?)';
-            connection.query(queryCliente, [nombre, rut, correo || '', contacto || ''], (err, resultCliente) => {
-                if (err) {
-                    console.error('Error al crear cliente:', err);
-                    return res.status(500).json({ error: 'Error al crear cliente' });
-                }
+        // Verificar si el cliente ya existe
+        connection.query('SELECT id FROM cliente WHERE rut = ?', [rut], (err, clienteResults) => {
+            if (err) {
+                console.error('Error al verificar cliente:', err);
+                return res.status(500).json({ error: 'Error al verificar cliente' });
+            }
 
-                clienteId = resultCliente.insertId;
+            let clienteId;
+
+            const crearReserva = (clienteId) => {
+                // Crear la reserva
+                const fechaHoraReserva = `${fecha} ${horario || '00:00:00'}`;
+                const queryReserva = `
+                    INSERT INTO reserva (cliente_id, espacio_id, fecha_reserva, cantidad_personas, razon, estado)
+                    VALUES (?, ?, ?, ?, ?, 'pendiente')
+                `;
+
+                connection.query(queryReserva, [clienteId, espacioId, fechaHoraReserva, personas, razon], (err, resultReserva) => {
+                    if (err) {
+                        console.error('Error al crear reserva:', err);
+                        return res.status(500).json({ error: 'Error al crear la reserva' });
+                    }
+
+                    const reservaId = resultReserva.insertId;
+
+                    // Agregar servicios si los hay
+                    if (servicios && servicios.length > 0) {
+                        const serviciosPromises = servicios.map(servicioId => {
+                            return new Promise((resolve, reject) => {
+                                const queryServicio = 'INSERT INTO reserva_servicio (reserva_id, servicio_id) VALUES (?, ?)';
+                                connection.query(queryServicio, [reservaId, servicioId], (err) => {
+                                    if (err) reject(err);
+                                    else resolve();
+                                });
+                            });
+                        });
+
+                        Promise.all(serviciosPromises)
+                            .then(() => {
+                                console.log('Reserva pública creada con ID:', reservaId);
+                                res.status(201).json({
+                                    message: 'Reserva creada correctamente',
+                                    reservaId: reservaId,
+                                    estado: 'pendiente'
+                                });
+                            })
+                            .catch(err => {
+                                console.error('Error al agregar servicios:', err);
+                                res.status(500).json({ error: 'Error al agregar servicios a la reserva' });
+                            });
+                    } else {
+                        console.log('Reserva pública creada con ID:', reservaId);
+                        res.status(201).json({
+                            message: 'Reserva creada correctamente',
+                            reservaId: reservaId,
+                            estado: 'pendiente'
+                        });
+                    }
+                });
+            };
+
+            if (clienteResults.length > 0) {
+                // El cliente ya existe
+                clienteId = clienteResults[0].id;
                 crearReserva(clienteId);
-            });
-        }
+            } else {
+                // Crear nuevo cliente
+                const queryCliente = 'INSERT INTO cliente (nombre, rut, correo, telefono) VALUES (?, ?, ?, ?)';
+                connection.query(queryCliente, [nombre, rut, correo || '', contacto || ''], (err, resultCliente) => {
+                    if (err) {
+                        console.error('Error al crear cliente:', err);
+                        return res.status(500).json({ error: 'Error al crear cliente' });
+                    }
+
+                    clienteId = resultCliente.insertId;
+                    crearReserva(clienteId);
+                });
+            }
+        });
     });
 });
 

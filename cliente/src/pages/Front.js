@@ -135,8 +135,20 @@ function Front() {
 
         setCargandoDisponibilidad(true);
         try {
+            console.log('Cargando fechas ocupadas para espacio:', espacioId);
             const response = await Axios.get(`http://localhost:3001/api/disponibilidad/${espacioId}`);
-            setFechasOcupadas(response.data.fechasOcupadas || []);
+            console.log('Respuesta del servidor para fechas ocupadas:', response.data);
+
+            const fechasOcupadasFormateadas = (response.data.fechasOcupadas || []).map(fecha => {
+                // Asegurar que todas las fechas estén en formato Date
+                if (typeof fecha === 'string') {
+                    return new Date(fecha + 'T00:00:00');
+                }
+                return new Date(fecha);
+            });
+
+            console.log('Fechas ocupadas formateadas:', fechasOcupadasFormateadas);
+            setFechasOcupadas(fechasOcupadasFormateadas);
         } catch (error) {
             console.error('Error al cargar disponibilidad:', error);
             setFechasOcupadas([]);
@@ -166,9 +178,17 @@ function Front() {
         const fechaString = fecha.toISOString().split('T')[0];
         return fechasOcupadas.some(fechaOcupada => {
             // Convertir la fecha ocupada a string para comparación
-            const fechaOcupadaString = fechaOcupada instanceof Date
-                ? fechaOcupada.toISOString().split('T')[0]
-                : fechaOcupada;
+            let fechaOcupadaString;
+            if (fechaOcupada instanceof Date) {
+                fechaOcupadaString = fechaOcupada.toISOString().split('T')[0];
+            } else if (typeof fechaOcupada === 'string') {
+                // Si es string, puede venir en formato 'YYYY-MM-DD' o como timestamp
+                fechaOcupadaString = fechaOcupada.split('T')[0];
+            } else {
+                // Si es otro formato, intentar convertir a Date primero
+                const fechaTemp = new Date(fechaOcupada);
+                fechaOcupadaString = fechaTemp.toISOString().split('T')[0];
+            }
             return fechaOcupadaString === fechaString;
         });
     };
@@ -178,12 +198,17 @@ function Front() {
         if (view !== 'month') return false;
 
         const hoy = new Date();
+        // Configurar la hora a medianoche para comparación exacta de fechas
         hoy.setHours(0, 0, 0, 0);
 
-        // Deshabilitar fechas pasadas
-        if (date < hoy) return true;
+        // Configurar la fecha a comparar también a medianoche
+        const fechaComparar = new Date(date);
+        fechaComparar.setHours(0, 0, 0, 0);
 
-        // Deshabilitar fechas ocupadas
+        // Deshabilitar fechas pasadas (antes de hoy) Y el día actual
+        if (fechaComparar <= hoy) return true;
+
+        // Deshabilitar fechas ocupadas para el espacio seleccionado
         return esFechaOcupada(date);
     };
 
@@ -193,19 +218,22 @@ function Front() {
 
         const clases = [];
 
-        // Clase para fechas ocupadas
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        const fechaComparar = new Date(date);
+        fechaComparar.setHours(0, 0, 0, 0);
+
+        // Clase para fechas ocupadas (siempre aplicar primero para que tenga prioridad visual)
         if (esFechaOcupada(date)) {
             clases.push('fecha-ocupada');
         }
-
-        // Clase para fechas disponibles
-        const hoy = new Date();
-        hoy.setHours(0, 0, 0, 0);
-        if (date >= hoy && !esFechaOcupada(date)) {
+        // Clase para fechas disponibles (solo si no está ocupada, no es pasada Y no es hoy)
+        else if (fechaComparar > hoy) {
             clases.push('fecha-disponible');
         }
 
-        // Clase para fecha seleccionada
+        // Clase para fecha seleccionada (aplicar al final para que tenga la mayor prioridad)
         if (fechaSeleccionada && date.toDateString() === fechaSeleccionada.toDateString()) {
             clases.push('fecha-seleccionada');
         }
@@ -215,7 +243,28 @@ function Front() {
 
     // Manejar selección de fecha en el calendario
     const manejarSeleccionFecha = (fecha) => {
+        // Validar que la fecha no esté deshabilitada
         if (esFechaDeshabilitada({ date: fecha, view: 'month' })) {
+            console.log('Fecha deshabilitada seleccionada:', fecha);
+            return;
+        }
+
+        // Validar que la fecha no sea pasada o sea hoy
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const fechaSeleccionadaComparar = new Date(fecha);
+        fechaSeleccionadaComparar.setHours(0, 0, 0, 0);
+
+        if (fechaSeleccionadaComparar <= hoy) {
+            setMensaje('Solo se pueden seleccionar fechas futuras (a partir de mañana).');
+            setStatus('error');
+            return;
+        }
+
+        // Validar que la fecha no esté ocupada
+        if (esFechaOcupada(fecha)) {
+            setMensaje('Esta fecha ya está ocupada para el espacio seleccionado. Por favor elige otra fecha.');
+            setStatus('error');
             return;
         }
 
@@ -223,6 +272,10 @@ function Front() {
         const fechaString = fecha.toISOString().split('T')[0];
         setFecha(fechaString);
         setMostrarCalendario(false);
+
+        // Limpiar mensajes de error previos
+        setMensaje('');
+        setStatus('');
 
         // Cargar servicios ocupados para la fecha seleccionada
         cargarServiciosOcupados(fechaString);
@@ -262,21 +315,18 @@ function Front() {
                 console.log('Espacios cargados:', response.data);
                 if (response.data.length > 0) {
                     setEspacios(response.data);
-                    // Establecer el primer espacio como seleccionado por defecto
-                    const primerEspacio = response.data[0].id.toString();
-                    setEspacioId(primerEspacio);
-                    // Cargar disponibilidad del primer espacio
-                    cargarFechasOcupadas(primerEspacio);
+                    // NO establecer automáticamente el primer espacio, dejar que el usuario seleccione
+                    // setEspacioId permanece como cadena vacía
                 } else {
                     console.log('No hay espacios disponibles');
-                    // Si no hay espacios, crear uno por defecto
-                    crearEspacioPorDefecto();
+                    setMensaje('No hay espacios disponibles. Contacte al administrador para configurar los espacios.');
+                    setStatus('error');
                 }
             })
             .catch((error) => {
                 console.error('Error al cargar espacios:', error);
-                // En caso de error, intentar crear un espacio por defecto
-                crearEspacioPorDefecto();
+                setMensaje('Error al cargar espacios. Contacte al administrador.');
+                setStatus('error');
             });
 
         // Cargar servicios disponibles
@@ -350,42 +400,6 @@ function Front() {
         return () => clearInterval(intervalBackground);
     }, [backgroundImages.length]);
 
-
-    // Función para crear un espacio por defecto si no existen
-    const crearEspacioPorDefecto = () => {
-        Axios.post('http://localhost:3001/crearEspacio', {
-            nombre: 'Salón Principal',
-            capacidad: 100,
-            costo_base: 50000,
-            descripcion: 'Salón principal para eventos'
-        })
-            .then((response) => {
-                console.log('Espacio por defecto creado');
-                const nuevoEspacio = {
-                    id: response.data.id,
-                    nombre: 'Salón Principal',
-                    capacidad: 100,
-                    costo_base: 50000
-                };
-                setEspacios([nuevoEspacio]);
-                const espacioId = response.data.id.toString();
-                setEspacioId(espacioId);
-                cargarFechasOcupadas(espacioId);
-            })
-            .catch((error) => {
-                console.error('Error al crear espacio por defecto:', error);
-                // Crear un espacio temporal para que la aplicación no falle
-                const espacioTemporal = {
-                    id: 1,
-                    nombre: 'Salón Principal (Temporal)',
-                    capacidad: 100,
-                    costo_base: 50000
-                };
-                setEspacios([espacioTemporal]);
-                setEspacioId('1');
-            });
-    };
-
     // Manejar selección de servicios
     const handleServicioChange = (servicioId, isChecked) => {
         if (isChecked) {
@@ -436,6 +450,27 @@ function Front() {
 
     // Función para enviar la reserva
     const crearReserva = () => {
+        // Validación de fecha antes de enviar
+        if (fecha) {
+            const fechaReserva = new Date(fecha);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            fechaReserva.setHours(0, 0, 0, 0);
+
+            if (fechaReserva <= hoy) {
+                setMensaje('Solo se pueden hacer reservas para fechas futuras (a partir de mañana).');
+                setStatus('error');
+                return;
+            }
+
+            // Verificar si la fecha está ocupada para el espacio seleccionado
+            if (esFechaOcupada(fechaReserva)) {
+                setMensaje('La fecha seleccionada no está disponible para este espacio. Por favor selecciona otra fecha.');
+                setStatus('error');
+                return;
+            }
+        }
+
         // Validaciones antes de enviar
         if (!validarRut(rut)) {
             setMensaje('El RUT ingresado no es válido. Debe tener entre 8 y 9 dígitos.');
@@ -500,13 +535,11 @@ function Front() {
                 setHorario('');
                 setPersonas('');
                 setRazon('');
-                setEspacioId(espacios.length > 0 ? espacios[0].id.toString() : '');
+                setEspacioId(''); // Resetear a vacío para que aparezca "Seleccione un espacio"
                 setServiciosSeleccionados([]);
                 setServiciosOcupados([]);
                 // Recargar disponibilidad después de crear reserva
-                if (espacios.length > 0) {
-                    cargarFechasOcupadas(espacios[0].id.toString());
-                }
+                // No recargar automáticamente ya que no hay espacio seleccionado por defecto
             })
             .catch((error) => {
                 console.error('Error al crear reserva:', error);
@@ -667,6 +700,10 @@ function Front() {
                             value={espacioId}
                             onChange={handleEspacioChange}
                             required
+                            style={{
+                                borderColor: !espacioId ? '#ff6b6b' : '',
+                                backgroundColor: !espacioId ? 'rgba(255, 107, 107, 0.05)' : ''
+                            }}
                         >
                             <option value="">Seleccione un espacio</option>
                             {espacios.map(espacio => (
@@ -679,6 +716,11 @@ function Front() {
                         {cargandoDisponibilidad && (
                             <small style={{ color: '#666', fontSize: '0.85em' }}>
                                 Cargando disponibilidad...
+                            </small>
+                        )}
+                        {!espacioId && (
+                            <small style={{ color: '#ff6b6b', fontSize: '0.85em', fontWeight: '500' }}>
+                                ⚠️ Selecciona un espacio para continuar con tu reserva
                             </small>
                         )}
                     </div>
@@ -711,6 +753,13 @@ function Front() {
                             <div className="calendario-container">
                                 <div className="calendario-header">
                                     <h4>Selecciona tu fecha</h4>
+                                    <div className="calendario-navegacion-info">
+                                        <span>Usa las flechas </span>
+                                        <span className="icon-navigation">‹ ›</span>
+                                        <span> para navegar entre meses y </span>
+                                        <span className="icon-navigation">« »</span>
+                                        <span> para cambiar años</span>
+                                    </div>
                                     <div className="leyenda-calendario">
                                         <div className="leyenda-item">
                                             <span className="color-disponible"></span>
@@ -719,6 +768,10 @@ function Front() {
                                         <div className="leyenda-item">
                                             <span className="color-ocupado"></span>
                                             <span>Ocupado</span>
+                                        </div>
+                                        <div className="leyenda-item">
+                                            <span className="color-no-disponible"></span>
+                                            <span>No disponible (hoy)</span>
                                         </div>
                                         <div className="leyenda-item">
                                             <span className="color-seleccionado"></span>
@@ -732,14 +785,21 @@ function Front() {
                                     tileDisabled={esFechaDeshabilitada}
                                     tileClassName={obtenerClaseDia}
                                     locale="es-CL"
-                                    minDate={new Date()}
+                                    minDate={new Date(new Date().setDate(new Date().getDate() + 1))}
+                                    maxDate={new Date(new Date().setFullYear(new Date().getFullYear() + 2))}
                                     selectRange={false}
-                                    showNeighboringMonth={false}
-                                    prev2Label={null}
-                                    next2Label={null}
+                                    showNeighboringMonth={true}
+                                    prev2Label={'«'}
+                                    next2Label={'»'}
+                                    prevLabel={'‹'}
+                                    nextLabel={'›'}
                                     formatShortWeekday={(locale, date) =>
                                         ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][date.getDay()]
                                     }
+                                    showNavigation={true}
+                                    navigationLabel={({ date }) => `${date.toLocaleDateString('es-CL', { month: 'long', year: 'numeric' })}`}
+                                    view="month"
+                                    defaultView="month"
                                 />
                                 <button
                                     type="button"
@@ -753,7 +813,7 @@ function Front() {
 
                         {!espacioId && (
                             <small style={{ color: '#ff6b6b', fontSize: '0.85em' }}>
-                                Primero selecciona un espacio para ver la disponibilidad
+                                ⚠️ Primero selecciona un espacio para ver la disponibilidad del calendario
                             </small>
                         )}
                     </div>

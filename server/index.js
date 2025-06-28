@@ -39,35 +39,11 @@ app.get('/espacios', (req, res) => {
     });
 });
 
-// Endpoint para crear espacio (mantenido por compatibilidad)
-app.post('/crearEspacio', (req, res) => {
-    const { nombre, capacidad, costo_base, descripcion } = req.body;
-
-    if (!nombre || !capacidad || !costo_base) {
-        return res.status(400).json({ error: 'Nombre, capacidad y costo base son obligatorios' });
-    }
-
-    const query = 'INSERT INTO espacio (nombre, capacidad, costo_base, descripcion) VALUES (?, ?, ?, ?)';
-
-    connection.query(query, [nombre, capacidad, costo_base, descripcion], (err, result) => {
-        if (err) {
-            console.error('Error al crear espacio:', err);
-            return res.status(500).json({
-                error: 'Error al crear el espacio',
-                details: err.message
-            });
-        }
-
-        res.status(201).json({
-            message: 'Espacio creado correctamente',
-            id: result.insertId
-        });
-    });
-});
-
 // Endpoint para obtener disponibilidad de fechas por espacio
 app.get('/api/disponibilidad/:espacioId', (req, res) => {
     const { espacioId } = req.params;
+
+    console.log('Consultando disponibilidad para espacio:', espacioId);
 
     const query = `
         SELECT DATE(fecha_reserva) as fecha_ocupada 
@@ -85,7 +61,14 @@ app.get('/api/disponibilidad/:espacioId', (req, res) => {
                 details: err.message
             });
         } else {
-            const fechasOcupadas = result.map(row => row.fecha_ocupada);
+            // Convertir las fechas a formato ISO string para mejor compatibilidad
+            const fechasOcupadas = result.map(row => {
+                // Asegurar que la fecha esté en formato 'YYYY-MM-DD'
+                const fecha = new Date(row.fecha_ocupada);
+                return fecha.toISOString().split('T')[0];
+            });
+
+            console.log('Fechas ocupadas encontradas:', fechasOcupadas);
             res.json({ fechasOcupadas });
         }
     });
