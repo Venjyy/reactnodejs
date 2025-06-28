@@ -452,25 +452,32 @@ router.get('/reservas', (req, res) => {
             e.id as espacioId,
             e.nombre as espacioNombre,
             e.costo_base as espacioCosto,
-            GROUP_CONCAT(DISTINCT s.id) as serviciosIds,
-            GROUP_CONCAT(DISTINCT s.nombre) as serviciosNombres,
-            GROUP_CONCAT(DISTINCT s.costo) as serviciosCostos,
-            COALESCE(SUM(DISTINCT s.costo), 0) as totalServicios,
-            (e.costo_base + COALESCE(SUM(DISTINCT s.costo), 0)) as costoTotal,
+            COALESCE(servicios_concat.serviciosIds, '') as serviciosIds,
+            COALESCE(servicios_concat.serviciosNombres, '') as serviciosNombres,
+            COALESCE(servicios_concat.serviciosCostos, '') as serviciosCostos,
+            COALESCE(servicios_concat.totalServicios, 0) as totalServicios,
+            (e.costo_base + COALESCE(servicios_concat.totalServicios, 0)) as costoTotal,
             COALESCE(pagos.total_pagado, 0) as totalPagado,
-            (e.costo_base + COALESCE(SUM(DISTINCT s.costo), 0) - COALESCE(pagos.total_pagado, 0)) as saldoPendiente
+            (e.costo_base + COALESCE(servicios_concat.totalServicios, 0) - COALESCE(pagos.total_pagado, 0)) as saldoPendiente
         FROM reserva r
         JOIN cliente c ON r.cliente_id = c.id
         JOIN espacio e ON r.espacio_id = e.id
-        LEFT JOIN reserva_servicio rs ON r.id = rs.reserva_id
-        LEFT JOIN servicio s ON rs.servicio_id = s.id
+        LEFT JOIN (
+            SELECT 
+                rs.reserva_id,
+                GROUP_CONCAT(DISTINCT s.id) as serviciosIds,
+                GROUP_CONCAT(DISTINCT s.nombre) as serviciosNombres,
+                GROUP_CONCAT(DISTINCT s.costo) as serviciosCostos,
+                SUM(DISTINCT s.costo) as totalServicios
+            FROM reserva_servicio rs
+            JOIN servicio s ON rs.servicio_id = s.id
+            GROUP BY rs.reserva_id
+        ) servicios_concat ON r.id = servicios_concat.reserva_id
         LEFT JOIN (
             SELECT reserva_id, SUM(abono) as total_pagado
             FROM pago
             GROUP BY reserva_id
         ) pagos ON r.id = pagos.reserva_id
-        GROUP BY r.id, r.fecha_reserva, r.estado, r.cantidad_personas, r.razon, r.fecha_creacion,
-                 c.id, c.nombre, c.rut, e.id, e.nombre, e.costo_base, pagos.total_pagado
         ORDER BY r.fecha_reserva DESC
     `;
 
@@ -524,25 +531,20 @@ router.get('/reservas', (req, res) => {
                 horaFin: horaFin,
                 numeroPersonas: reserva.numeroPersonas,
                 tipoEvento: reserva.tipoEvento,
-                estado: reserva.estado,
                 serviciosSeleccionados: serviciosSeleccionados,
                 serviciosNombres: reserva.serviciosNombres ? reserva.serviciosNombres.split(',') : [],
-                totalServicios: parseFloat(reserva.totalServicios) || 0,
-                costoTotal: parseFloat(reserva.costoTotal) || 0,
-                totalPagado: parseFloat(reserva.totalPagado) || 0,
-                saldoPendiente: parseFloat(reserva.saldoPendiente) || 0,
-                anticipo: parseFloat(reserva.totalPagado) || 0,
-                descuento: 0, // Por defecto 0, agregar a BD si necesitas
-                observaciones: '', // Agregar a BD si necesitas
-                fecha_creacion: reserva.fecha_creacion
+                estado: reserva.estado,
+                costoTotal: parseFloat(reserva.costoTotal),
+                totalPagado: parseFloat(reserva.totalPagado),
+                saldoPendiente: parseFloat(reserva.saldoPendiente),
+                fechaCreacion: reserva.fecha_creacion
             };
         });
 
-        console.log('Reservas obtenidas y formateadas:', reservasFormateadas.length);
+        console.log(`Reservas obtenidas: ${reservasFormateadas.length}`);
         res.status(200).json(reservasFormateadas);
     });
 });
-
 // Endpoint para cambiar estado de una reserva
 router.patch('/reservas/:id/estado', (req, res) => {
     console.log('Endpoint PATCH /api/reservas/:id/estado llamado');

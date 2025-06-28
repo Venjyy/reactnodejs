@@ -65,6 +65,58 @@ app.post('/crearEspacio', (req, res) => {
     });
 });
 
+// Endpoint para obtener disponibilidad de fechas por espacio
+app.get('/api/disponibilidad/:espacioId', (req, res) => {
+    const { espacioId } = req.params;
+
+    const query = `
+        SELECT DATE(fecha_reserva) as fecha_ocupada 
+        FROM reserva 
+        WHERE espacio_id = ? 
+        AND estado != 'cancelada'
+        AND fecha_reserva >= CURDATE()
+    `;
+
+    connection.query(query, [espacioId], (err, result) => {
+        if (err) {
+            console.error('Error al obtener disponibilidad:', err);
+            return res.status(500).json({
+                error: 'Error al consultar disponibilidad',
+                details: err.message
+            });
+        } else {
+            const fechasOcupadas = result.map(row => row.fecha_ocupada);
+            res.json({ fechasOcupadas });
+        }
+    });
+});
+
+// Endpoint para obtener servicios ocupados en una fecha específica
+app.get('/api/servicios-ocupados/:fecha', (req, res) => {
+    const { fecha } = req.params;
+
+    const query = `
+        SELECT DISTINCT rs.servicio_id
+        FROM reserva r
+        JOIN reserva_servicio rs ON r.id = rs.reserva_id
+        WHERE DATE(r.fecha_reserva) = ?
+        AND r.estado != 'cancelada'
+    `;
+
+    connection.query(query, [fecha], (err, result) => {
+        if (err) {
+            console.error('Error al obtener servicios ocupados:', err);
+            return res.status(500).json({
+                error: 'Error al consultar servicios ocupados',
+                details: err.message
+            });
+        } else {
+            const serviciosOcupados = result.map(row => row.servicio_id);
+            res.json({ serviciosOcupados });
+        }
+    });
+});
+
 // Usar las rutas - ORDEN IMPORTANTE para evitar conflictos
 app.use('/', authRoutes);
 app.use('/dashboard', dashboardRoutes);

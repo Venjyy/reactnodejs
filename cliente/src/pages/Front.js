@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Axios from 'axios';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import '../styles/Front.css'; // Asegúrate de tener este archivo CSS
 import bgImage from '../assets/images/bg.jpg';
 import fotorefImage from '../assets/images/fotoref.png';
@@ -28,6 +30,13 @@ function Front() {
     const [serviciosSeleccionados, setServiciosSeleccionados] = useState([]);
     const [mensaje, setMensaje] = useState('');
     const [status, setStatus] = useState('');
+
+    // Estados para el calendario
+    const [mostrarCalendario, setMostrarCalendario] = useState(false);
+    const [fechasOcupadas, setFechasOcupadas] = useState([]);
+    const [fechaSeleccionada, setFechaSeleccionada] = useState(null);
+    const [cargandoDisponibilidad, setCargandoDisponibilidad] = useState(false);
+    const [serviciosOcupados, setServiciosOcupados] = useState([]);
 
     // Estados para animaciones del hero con transición mejorada
     const [currentTextIndex, setCurrentTextIndex] = useState(0);
@@ -120,6 +129,125 @@ function Front() {
         setContacto(valorFormateado);
     };
 
+    // Función para cargar fechas ocupadas
+    const cargarFechasOcupadas = async (espacioId) => {
+        if (!espacioId) return;
+
+        setCargandoDisponibilidad(true);
+        try {
+            const response = await Axios.get(`http://localhost:3001/api/disponibilidad/${espacioId}`);
+            setFechasOcupadas(response.data.fechasOcupadas || []);
+        } catch (error) {
+            console.error('Error al cargar disponibilidad:', error);
+            setFechasOcupadas([]);
+        } finally {
+            setCargandoDisponibilidad(false);
+        }
+    };
+
+    // Función para cargar servicios ocupados en una fecha
+    const cargarServiciosOcupados = async (fecha) => {
+        if (!fecha) {
+            setServiciosOcupados([]);
+            return;
+        }
+
+        try {
+            const response = await Axios.get(`http://localhost:3001/api/servicios-ocupados/${fecha}`);
+            setServiciosOcupados(response.data.serviciosOcupados || []);
+        } catch (error) {
+            console.error('Error al cargar servicios ocupados:', error);
+            setServiciosOcupados([]);
+        }
+    };
+
+    // Función para verificar si una fecha está ocupada
+    const esFechaOcupada = (fecha) => {
+        const fechaString = fecha.toISOString().split('T')[0];
+        return fechasOcupadas.some(fechaOcupada => {
+            // Convertir la fecha ocupada a string para comparación
+            const fechaOcupadaString = fechaOcupada instanceof Date
+                ? fechaOcupada.toISOString().split('T')[0]
+                : fechaOcupada;
+            return fechaOcupadaString === fechaString;
+        });
+    };
+
+    // Función para deshabilitar fechas pasadas y ocupadas
+    const esFechaDeshabilitada = ({ date, view }) => {
+        if (view !== 'month') return false;
+
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+
+        // Deshabilitar fechas pasadas
+        if (date < hoy) return true;
+
+        // Deshabilitar fechas ocupadas
+        return esFechaOcupada(date);
+    };
+
+    // Función para aplicar clases CSS a los días
+    const obtenerClaseDia = ({ date, view }) => {
+        if (view !== 'month') return null;
+
+        const clases = [];
+
+        // Clase para fechas ocupadas
+        if (esFechaOcupada(date)) {
+            clases.push('fecha-ocupada');
+        }
+
+        // Clase para fechas disponibles
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        if (date >= hoy && !esFechaOcupada(date)) {
+            clases.push('fecha-disponible');
+        }
+
+        // Clase para fecha seleccionada
+        if (fechaSeleccionada && date.toDateString() === fechaSeleccionada.toDateString()) {
+            clases.push('fecha-seleccionada');
+        }
+
+        return clases.join(' ');
+    };
+
+    // Manejar selección de fecha en el calendario
+    const manejarSeleccionFecha = (fecha) => {
+        if (esFechaDeshabilitada({ date: fecha, view: 'month' })) {
+            return;
+        }
+
+        setFechaSeleccionada(fecha);
+        const fechaString = fecha.toISOString().split('T')[0];
+        setFecha(fechaString);
+        setMostrarCalendario(false);
+
+        // Cargar servicios ocupados para la fecha seleccionada
+        cargarServiciosOcupados(fechaString);
+
+        // Limpiar servicios seleccionados para evitar conflictos
+        setServiciosSeleccionados([]);
+    };
+
+    // Manejar cambio de espacio
+    const handleEspacioChange = (e) => {
+        const nuevoEspacioId = e.target.value;
+        setEspacioId(nuevoEspacioId);
+
+        // Limpiar fecha seleccionada al cambiar espacio
+        setFecha('');
+        setFechaSeleccionada(null);
+        setServiciosOcupados([]);
+        setServiciosSeleccionados([]);
+
+        // Cargar disponibilidad del nuevo espacio
+        if (nuevoEspacioId) {
+            cargarFechasOcupadas(nuevoEspacioId);
+        }
+    };
+
     // Cargar espacios y servicios disponibles al cargar el componente
     useEffect(() => {
         document.title = 'El Patio de Lea - Centro de Eventos';
@@ -135,7 +263,10 @@ function Front() {
                 if (response.data.length > 0) {
                     setEspacios(response.data);
                     // Establecer el primer espacio como seleccionado por defecto
-                    setEspacioId(response.data[0].id.toString());
+                    const primerEspacio = response.data[0].id.toString();
+                    setEspacioId(primerEspacio);
+                    // Cargar disponibilidad del primer espacio
+                    cargarFechasOcupadas(primerEspacio);
                 } else {
                     console.log('No hay espacios disponibles');
                     // Si no hay espacios, crear uno por defecto
@@ -237,7 +368,9 @@ function Front() {
                     costo_base: 50000
                 };
                 setEspacios([nuevoEspacio]);
-                setEspacioId(response.data.id.toString());
+                const espacioId = response.data.id.toString();
+                setEspacioId(espacioId);
+                cargarFechasOcupadas(espacioId);
             })
             .catch((error) => {
                 console.error('Error al crear espacio por defecto:', error);
@@ -322,6 +455,26 @@ function Front() {
             return;
         }
 
+        // Validar capacidad del espacio
+        const espacioSeleccionado = espacios.find(e => e.id.toString() === espacioId);
+        if (espacioSeleccionado && parseInt(personas) > espacioSeleccionado.capacidad) {
+            setMensaje(`La cantidad de personas (${personas}) excede la capacidad del espacio seleccionado (${espacioSeleccionado.capacidad} personas).`);
+            setStatus('error');
+            return;
+        }
+
+        // Validar que no se seleccionen servicios ocupados
+        const serviciosConflicto = serviciosSeleccionados.filter(servicioId => serviciosOcupados.includes(servicioId));
+        if (serviciosConflicto.length > 0) {
+            const serviciosConflictoNombres = serviciosConflicto.map(servicioId => {
+                const servicio = servicios.find(s => s.id === servicioId);
+                return servicio ? servicio.nombre : `Servicio ${servicioId}`;
+            });
+            setMensaje(`Los siguientes servicios ya están ocupados en esta fecha: ${serviciosConflictoNombres.join(', ')}`);
+            setStatus('error');
+            return;
+        }
+
         Axios.post('http://localhost:3001/api/reservas-publicas', {
             nombre: nombre,
             rut: rut,
@@ -343,11 +496,17 @@ function Front() {
                 setCorreo('');
                 setContacto('+569 '); // Resetear con el prefijo
                 setFecha('');
+                setFechaSeleccionada(null);
                 setHorario('');
                 setPersonas('');
                 setRazon('');
                 setEspacioId(espacios.length > 0 ? espacios[0].id.toString() : '');
                 setServiciosSeleccionados([]);
+                setServiciosOcupados([]);
+                // Recargar disponibilidad después de crear reserva
+                if (espacios.length > 0) {
+                    cargarFechasOcupadas(espacios[0].id.toString());
+                }
             })
             .catch((error) => {
                 console.error('Error al crear reserva:', error);
@@ -502,15 +661,101 @@ function Front() {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="fecha">Fecha del evento</label>
-                        <input
-                            type="date"
-                            id="fecha"
-                            value={fecha}
-                            onChange={(e) => setFecha(e.target.value)}
-                            min={new Date().toISOString().split('T')[0]}
+                        <label htmlFor="espacio">Espacio</label>
+                        <select
+                            id="espacio"
+                            value={espacioId}
+                            onChange={handleEspacioChange}
                             required
-                        />
+                        >
+                            <option value="">Seleccione un espacio</option>
+                            {espacios.map(espacio => (
+                                <option key={espacio.id} value={espacio.id}>
+                                    {espacio.nombre} (Cap. {espacio.capacidad} personas)
+                                    {espacio.costo_base && ` - $${espacio.costo_base.toLocaleString()}`}
+                                </option>
+                            ))}
+                        </select>
+                        {cargandoDisponibilidad && (
+                            <small style={{ color: '#666', fontSize: '0.85em' }}>
+                                Cargando disponibilidad...
+                            </small>
+                        )}
+                    </div>
+
+                    {/* Campo de fecha con calendario personalizado */}
+                    <div className="form-group">
+                        <label htmlFor="fecha">Fecha del evento</label>
+                        <div className="fecha-input-container">
+                            <input
+                                type="text"
+                                id="fecha"
+                                value={fechaSeleccionada ? fechaSeleccionada.toLocaleDateString('es-CL') : ''}
+                                placeholder="Selecciona una fecha"
+                                onClick={() => setMostrarCalendario(!mostrarCalendario)}
+                                readOnly
+                                required
+                                className="fecha-input"
+                            />
+                            <button
+                                type="button"
+                                className="btn-calendario"
+                                onClick={() => setMostrarCalendario(!mostrarCalendario)}
+                                disabled={!espacioId}
+                            >
+                                📅
+                            </button>
+                        </div>
+
+                        {mostrarCalendario && espacioId && (
+                            <div className="calendario-container">
+                                <div className="calendario-header">
+                                    <h4>Selecciona tu fecha</h4>
+                                    <div className="leyenda-calendario">
+                                        <div className="leyenda-item">
+                                            <span className="color-disponible"></span>
+                                            <span>Disponible</span>
+                                        </div>
+                                        <div className="leyenda-item">
+                                            <span className="color-ocupado"></span>
+                                            <span>Ocupado</span>
+                                        </div>
+                                        <div className="leyenda-item">
+                                            <span className="color-seleccionado"></span>
+                                            <span>Seleccionado</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Calendar
+                                    onChange={manejarSeleccionFecha}
+                                    value={fechaSeleccionada}
+                                    tileDisabled={esFechaDeshabilitada}
+                                    tileClassName={obtenerClaseDia}
+                                    locale="es-CL"
+                                    minDate={new Date()}
+                                    selectRange={false}
+                                    showNeighboringMonth={false}
+                                    prev2Label={null}
+                                    next2Label={null}
+                                    formatShortWeekday={(locale, date) =>
+                                        ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][date.getDay()]
+                                    }
+                                />
+                                <button
+                                    type="button"
+                                    className="btn-cerrar-calendario"
+                                    onClick={() => setMostrarCalendario(false)}
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
+                        )}
+
+                        {!espacioId && (
+                            <small style={{ color: '#ff6b6b', fontSize: '0.85em' }}>
+                                Primero selecciona un espacio para ver la disponibilidad
+                            </small>
+                        )}
                     </div>
 
                     <div className="form-group">
@@ -540,24 +785,6 @@ function Front() {
                     </div>
 
                     <div className="form-group">
-                        <label htmlFor="espacio">Espacio</label>
-                        <select
-                            id="espacio"
-                            value={espacioId}
-                            onChange={(e) => setEspacioId(e.target.value)}
-                            required
-                        >
-                            <option value="">Seleccione un espacio</option>
-                            {espacios.map(espacio => (
-                                <option key={espacio.id} value={espacio.id}>
-                                    {espacio.nombre} (Cap. {espacio.capacidad} personas)
-                                    {espacio.costo_base && ` - $${espacio.costo_base.toLocaleString()}`}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
                         <label htmlFor="personas">Cantidad de personas</label>
                         <input
                             type="number"
@@ -565,10 +792,29 @@ function Front() {
                             value={personas}
                             onChange={(e) => setPersonas(e.target.value)}
                             min="1"
-                            max="100"
+                            max={espacios.find(e => e.id.toString() === espacioId)?.capacidad || 100}
                             placeholder="Ej: 50"
                             required
                         />
+                        {espacioId && personas && (
+                            (() => {
+                                const espacioSeleccionado = espacios.find(e => e.id.toString() === espacioId);
+                                const capacidadExcedida = espacioSeleccionado && parseInt(personas) > espacioSeleccionado.capacidad;
+
+                                return (
+                                    <div className={`capacidad-info ${capacidadExcedida ? 'capacidad-warning' : ''}`}>
+                                        <small style={{
+                                            color: capacidadExcedida ? '#856404' : '#666',
+                                            fontSize: '0.85em'
+                                        }}>
+                                            {capacidadExcedida ? '⚠️ ' : '✓ '}
+                                            Capacidad del espacio: {espacioSeleccionado?.capacidad || 0} personas
+                                            {capacidadExcedida && ' (Excede la capacidad máxima)'}
+                                        </small>
+                                    </div>
+                                );
+                            })()
+                        )}
                     </div>
 
                     <div className="form-group">
@@ -588,26 +834,40 @@ function Front() {
                     {servicios.length > 0 && (
                         <div className="form-group servicios-adicionales">
                             <label>Servicios adicionales (opcionales)</label>
+                            {fecha && serviciosOcupados.length > 0 && (
+                                <div className="alerta-servicios-ocupados">
+                                    <small style={{ color: '#ff6b6b', fontSize: '0.85em' }}>
+                                        ⚠️ Algunos servicios no están disponibles en la fecha seleccionada
+                                    </small>
+                                </div>
+                            )}
                             <div className="servicios-checkbox-group">
-                                {servicios.map(servicio => (
-                                    <div key={servicio.id} className="servicio-checkbox-item">
-                                        <label className="checkbox-label">
-                                            <input
-                                                type="checkbox"
-                                                value={servicio.id}
-                                                checked={serviciosSeleccionados.includes(servicio.id)}
-                                                onChange={(e) => handleServicioChange(servicio.id, e.target.checked)}
-                                            />
-                                            <div className="servicio-info">
-                                                <span className="servicio-nombre">{servicio.nombre}</span>
-                                                <span className="servicio-precio">${servicio.precio.toLocaleString()}</span>
-                                                {servicio.descripcion && (
-                                                    <small className="servicio-descripcion">{servicio.descripcion}</small>
-                                                )}
-                                            </div>
-                                        </label>
-                                    </div>
-                                ))}
+                                {servicios.map(servicio => {
+                                    const estaOcupado = serviciosOcupados.includes(servicio.id);
+                                    return (
+                                        <div key={servicio.id} className={`servicio-checkbox-item ${estaOcupado ? 'servicio-ocupado' : ''}`}>
+                                            <label className="checkbox-label">
+                                                <input
+                                                    type="checkbox"
+                                                    value={servicio.id}
+                                                    checked={serviciosSeleccionados.includes(servicio.id)}
+                                                    onChange={(e) => handleServicioChange(servicio.id, e.target.checked)}
+                                                    disabled={estaOcupado}
+                                                />
+                                                <div className="servicio-info">
+                                                    <span className="servicio-nombre">
+                                                        {servicio.nombre}
+                                                        {estaOcupado && <span className="ocupado-badge"> (No disponible)</span>}
+                                                    </span>
+                                                    <span className="servicio-precio">${servicio.precio.toLocaleString()}</span>
+                                                    {servicio.descripcion && (
+                                                        <small className="servicio-descripcion">{servicio.descripcion}</small>
+                                                    )}
+                                                </div>
+                                            </label>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
