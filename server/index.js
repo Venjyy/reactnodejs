@@ -17,6 +17,8 @@ const reservasRoutes = require('./routes/reservas');
 const pagosRoutes = require('./routes/pagos');
 const reportesRoutes = require('./routes/reportes');
 const climaRoutes = require('./routes/clima');
+const khipuRoutes = require('./routes/khipu');
+const khipuWebhookRoutes = require('./routes/khipu-webhook');
 
 const app = express();
 
@@ -31,7 +33,7 @@ app.get('/test', (req, res) => {
 
 // Endpoint para obtener espacios (mantenido por compatibilidad)
 app.get('/espacios', (req, res) => {
-    connection.query('SELECT id, nombre, capacidad FROM espacio', (err, results) => {
+    connection.query('SELECT id, nombre, capacidad, costo_base FROM espacio WHERE disponible = 1', (err, results) => {
         if (err) {
             console.error('Error al obtener espacios:', err);
             return res.status(500).json({
@@ -116,6 +118,8 @@ app.use('/api', reservasRoutes);
 app.use('/api', pagosRoutes);
 app.use('/api', reportesRoutes);
 app.use('/api/clima', climaRoutes);
+app.use('/api/khipu', khipuRoutes);
+app.use('/api/khipu', khipuWebhookRoutes);
 
 // Rutas directas para compatibilidad con frontend existente
 app.use('/', clientesRoutes);  // Para /clientes

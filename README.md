@@ -2,11 +2,15 @@
 
 > *Un sistema de reservas para gestionar eventos en nuestro acogedor centro ubicado en Cañete, rodeado de naturaleza y tradición*
 
-## 🛠️ Tecnologías Utilizadas (Por el momento)
+## 🛠️ Tecnologías Utilizadas
 
 - **Frontend**: React.js con Axios para comunicación con el servidor
 - **Backend**: Node.js con Express en DigitalOcean (o local)
 - **Base de datos**: MySQL (Pensando en migrar hacia MariaDB)
+- **Pagos Online**: Khipu API v3.0 para transferencias bancarias instantáneas
+  - 🧪 **Actualmente en modo PRUEBA** (límite: $5,000 CLP)
+  - 🚀 **Para producción**: Requiere upgrade de cuenta Khipu
+- **APIs Externas**: OpenWeatherMap para pronósticos del clima
 
 ## 🚀 Instalación
 
@@ -15,11 +19,29 @@
 - MySQL
 - npm
 - DigitalOcean (Opcional)
+- Cuenta Khipu para pagos online
 
 ### Pasos para iniciar el servidor
 
+# Instalar dependencias
+npm install exceljs jspdf jspdf-autotable moment axios dotenv
+
+# Configurar variables de entorno (.env)
+# 🧪 MODO PRUEBA (límite $5,000 CLP)
+KHIPU_API_KEY=tu-api-key-prueba
+KHIPU_RECEIVER_ID=501187
+KHIPU_SECRET=0bc237e1e68f573f767b4a73799bad6b9467efc1
+
+# 🚀 PARA PRODUCCIÓN: Cambiar por credenciales de producción
+# KHIPU_API_KEY=tu-api-key-produccion
+# KHIPU_RECEIVER_ID=tu-receiver-id-produccion  
+# KHIPU_SECRET=tu-secret-produccion
+
+OPENWEATHER_API_KEY=tu-openweather-api-key
+FRONTEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:3001
+
 # Iniciar servidor (desde la carpeta server)
-npm install exceljs jspdf jspdf-autotable moment
 npm start / nodemon index.js
 
 (npm start funciona en node ya que lo manejo con scripts)

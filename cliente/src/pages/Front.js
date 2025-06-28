@@ -4,6 +4,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import '../styles/Front.css'; // Asegúrate de tener este archivo CSS
 import Swal from 'sweetalert2';
+import PagoKhipu from '../components/PagoKhipu'; // Importar componente de pago
 import bgImage from '../assets/images/bg.jpg';
 import fotorefImage from '../assets/images/fotoref.png';
 import saloninteriorImage from '../assets/images/saloninterior.jpg';
@@ -47,6 +48,10 @@ function Front() {
     // Estados para el clima
     const [cacheClima, setCacheClima] = useState(new Map()); // Cache para evitar llamadas innecesarias
     const [cargandoClima, setCargandoClima] = useState(false);
+
+    // Estados para el pago con Khipu
+    const [mostrarPagoKhipu, setMostrarPagoKhipu] = useState(false);
+    const [reservaCreada, setReservaCreada] = useState(null);
 
     // Arrays para rotación
     const textosRotativos = [
@@ -179,19 +184,19 @@ function Front() {
                         </div>
                         <div style="background: #f5f5f5; padding: 10px; border-radius: 8px;">
                             <div style="font-weight: bold; color: #555;">💨 Viento</div>
-                            <div style="font-size: 1.2em; color: #2196F3;">${datosClima.viento} m/s</div>
+                            <div style="font-size: 1.2em, color: #2196F3;">${datosClima.viento} m/s</div>
                         </div>
                     </div>
                     
                     ${datosClima.tipo === 'forecast' ? `
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px; text-align: left;">
                         <div style="background: #e3f2fd; padding: 10px; border-radius: 8px;">
-                            <div style="font-weight: bold; color: #555;">🌧️ Prob. Lluvia</div>
-                            <div style="font-size: 1.2em; color: #2196F3;">${datosClima.probabilidad_lluvia}%</div>
+                            <div style="font-weight: bold, color: #555;">🌧️ Prob. Lluvia</div>
+                            <div style="font-size: 1.2em, color: #2196F3;">${datosClima.probabilidad_lluvia}%</div>
                         </div>
                         <div style="background: #e3f2fd; padding: 10px; border-radius: 8px;">
-                            <div style="font-weight: bold; color: #555;">☔ Precipitación</div>
-                            <div style="font-size: 1.2em; color: #2196F3;">${datosClima.precipitacion} mm</div>
+                            <div style="font-weight: bold, color: #555;">☔ Precipitación</div>
+                            <div style="font-size: 1.2em, color: #2196F3;">${datosClima.precipitacion} mm</div>
                         </div>
                     </div>
                     ` : ''}
@@ -704,23 +709,73 @@ function Front() {
             servicios: serviciosSeleccionados
         })
             .then((res) => {
+                // Guardar datos de la reserva creada para el pago
+                const espacioSeleccionado = espacios.find(e => e.id.toString() === espacioId);
+                const serviciosDetalle = serviciosSeleccionados.map(servicioId => {
+                    return servicios.find(s => s.id === servicioId);
+                }).filter(Boolean);
+
+                setReservaCreada({
+                    reservaId: res.data.reservaId,
+                    clienteNombre: nombre,
+                    clienteEmail: correo,
+                    razon: razon,
+                    fecha: fecha,
+                    personas: personas,
+                    espacioId: espacioId,
+                    espacioNombre: espacioSeleccionado?.nombre || 'Espacio seleccionado',
+                    espacioCosto: espacioSeleccionado?.costo_base || 0,
+                    serviciosSeleccionados: serviciosDetalle
+                });
+
+                // Mostrar opción de pago
+                Swal.fire({
+                    title: '🎉 ¡Reserva creada exitosamente!',
+                    html: `
+                        <div style="text-align: left; font-size: 14px;">
+                            <div style="background: #e8f5e8; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                                <strong>📋 Reserva ID:</strong> ${res.data.reservaId}<br>
+                                <strong>👤 Cliente:</strong> ${nombre}<br>
+                                <strong>🎯 Evento:</strong> ${razon}<br>
+                                <strong>📅 Fecha:</strong> ${new Date(fecha).toLocaleDateString('es-CL')}<br>
+                                <strong>🏠 Espacio:</strong> ${espacioSeleccionado?.nombre || 'N/A'}<br>
+                                <strong>👥 Personas:</strong> ${personas}
+                            </div>
+                            
+                            <div style="background: #fff3e0; padding: 15px; border-radius: 10px;">
+                                <strong>💰 ¿Deseas realizar el pago ahora?</strong><br>
+                                <span style="color: #666;">Puedes pagar de forma segura con transferencia bancaria mediante Khipu</span>
+                            </div>
+                        </div>
+                    `,
+                    icon: 'success',
+                    showCancelButton: true,
+                    confirmButtonText: '🏦 Pagar con Khipu',
+                    cancelButtonText: '⏳ Pagar después',
+                    confirmButtonColor: '#4ECDC4',
+                    cancelButtonColor: '#95a5a6',
+                    allowOutsideClick: false
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Mostrar componente de pago
+                        setMostrarPagoKhipu(true);
+                    } else {
+                        // Usuario decidió pagar después
+                        Swal.fire({
+                            title: 'ℹ️ Reserva guardada',
+                            text: 'Tu reserva está guardada. Puedes contactarnos para coordinar el pago.',
+                            icon: 'info',
+                            confirmButtonText: 'Entendido',
+                            confirmButtonColor: '#4ECDC4'
+                        });
+
+                        // Limpiar formulario
+                        limpiarFormulario();
+                    }
+                });
+
                 setMensaje('¡Reserva creada correctamente!');
                 setStatus('success');
-                // Limpiar campos después de una reserva exitosa
-                setNombre('');
-                setRut('');
-                setCorreo('');
-                setContacto('+569 '); // Resetear con el prefijo
-                setFecha('');
-                setFechaSeleccionada(null);
-                setHorario('');
-                setPersonas('');
-                setRazon('');
-                setEspacioId(''); // Resetear a vacío para que aparezca "Seleccione un espacio"
-                setServiciosSeleccionados([]);
-                setServiciosOcupados([]);
-                // Recargar disponibilidad después de crear reserva
-                // No recargar automáticamente ya que no hay espacio seleccionado por defecto
             })
             .catch((error) => {
                 console.error('Error al crear reserva:', error);
@@ -747,6 +802,65 @@ function Front() {
     const handleSubmit = (e) => {
         e.preventDefault();
         crearReserva();
+    };
+
+    // Función para limpiar el formulario después de una reserva exitosa
+    const limpiarFormulario = () => {
+        setNombre('');
+        setRut('');
+        setCorreo('');
+        setContacto('+569 ');
+        setFecha('');
+        setFechaSeleccionada(null);
+        setHorario('');
+        setPersonas('');
+        setRazon('');
+        setEspacioId('');
+        setServiciosSeleccionados([]);
+        setServiciosOcupados([]);
+        setMostrarCalendario(false);
+        setReservaCreada(null);
+        setMostrarPagoKhipu(false);
+    };
+
+    // Función para manejar pago exitoso
+    const manejarPagoExitoso = (datosPago) => {
+        console.log('✅ Pago exitoso:', datosPago);
+
+        // Cerrar modal de pago
+        setMostrarPagoKhipu(false);
+        setReservaCreada(null);
+
+        // Limpiar formulario después del pago
+        limpiarFormulario();
+
+        // Mostrar mensaje de éxito final
+        setTimeout(() => {
+            Swal.fire({
+                title: '🎉 ¡Todo listo!',
+                text: 'Tu reserva está confirmada y el pago está en proceso. Te contactaremos pronto.',
+                icon: 'success',
+                confirmButtonText: 'Perfecto',
+                confirmButtonColor: '#4ECDC4'
+            });
+        }, 1000);
+    };
+
+    // Función para cancelar el pago
+    const cancelarPago = () => {
+        setMostrarPagoKhipu(false);
+        setReservaCreada(null);
+
+        Swal.fire({
+            title: '⏳ Pago cancelado',
+            text: 'Tu reserva está guardada. Puedes contactarnos para coordinar el pago.',
+            icon: 'info',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#4ECDC4'
+        });
+
+        // Limpiar formulario
+        limpiarFormulario();
     };
 
     return (
@@ -1170,6 +1284,8 @@ function Front() {
                         {mensaje}
                     </div>
                 )}
+
+
             </section>
 
             {/* Conócenos - Completamente rediseñado */}
@@ -1347,6 +1463,19 @@ function Front() {
             <footer>
                 <p>&copy; 2025 El Patio de Lea. Todos los derechos reservados.</p>
             </footer>
+
+            {/* Modal de pago con Khipu */}
+            {mostrarPagoKhipu && reservaCreada && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <PagoKhipu
+                            reservaData={reservaCreada}
+                            onPagoExitoso={manejarPagoExitoso}
+                            onCancelar={cancelarPago}
+                        />
+                    </div>
+                </div>
+            )}
         </React.Fragment>
     );
 }
