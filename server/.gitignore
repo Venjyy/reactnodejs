@@ -55,3 +55,66 @@ exports/
 reports/
 *.xlsx
 *.pdf
+
+# ===== ARCHIVOS CRÍTICOS DE SEGURIDAD =====
+# API Keys y Secrets (NUNCA SUBIR)
+.env*
+api-keys.json
+secrets.json
+khipu-config.json
+
+# Archivos de autenticación
+auth-config.js
+jwt-secret.js
+oauth-credentials.json
+
+# Archivos de configuración de producción
+production.env
+staging.env
+local.env
+
+# Archivos de base de datos con credenciales
+database-credentials.json
+db-config.json
+
+# Archivos de backup que pueden contener datos sensibles
+backup/
+*.backup
+*.dump
+*.sql
+
+# Archivos de logs que pueden contener información sensible
+logs/
+*.log
+access.log
+error.log
+debug.log
+
+# Archivos de sesiones
+sessions/
+*.session
+
+# Archivos de SSL/TLS y certificados
+ssl/
+certificates/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Archivos de configuración de servicios externos
+aws-credentials.json
+google-credentials.json
+firebase-config.json
+
+# Archivos temporales que pueden contener datos sensibles
+tmp/
+temp/
+cache/
+uploads/temp/
+
+# Archivos de desarrollo local
+.vscode/settings.json
+.idea/workspace.xml
+local-config.json
