@@ -279,9 +279,9 @@ INSERT INTO `reserva_servicio` VALUES
 (5,1),(5,5);              -- Cena fin de año con catering y bar
 
 
-## 🧪 Comandos de Prueba y Debugging
+## Comandos de Prueba y Debugging
 
-### 🔧 Diferencias entre WebRequest y RestMethod
+### Porfavor ocupar siempre el uso correcto de comandos entre WebRequest y RestMethod (abajo una aclaración si es necesaria)
 
 #### **Invoke-WebRequest** - Para debugging detallado
 - **Propósito**: Cliente HTTP completo y detallado
@@ -340,73 +340,6 @@ Invoke-RestMethod -Uri "http://localhost:3001/api/khipu/test-conexion"
 Invoke-RestMethod -Uri "http://localhost:3001/api/khipu/pago-prueba" -Method POST
 ```
 
-### 🎯 Cuándo usar cada comando en tu proyecto
-
-#### **Usa Invoke-WebRequest cuando necesites:**
-- ✅ Debugging detallado de errores
-- ✅ Ver códigos de estado HTTP específicos
-- ✅ Analizar headers de respuesta
-- ✅ Troubleshooting de problemas de conexión
-- ✅ Ver la respuesta HTTP completa
-
-**Ejemplo de debugging con manejo de errores:**
-```powershell
-# Debugging completo de Khipu con manejo de errores
-try {
-    $response = Invoke-WebRequest -Uri "http://localhost:3001/api/khipu/test-conexion" -UseBasicParsing
-    Write-Host "✅ Khipu conectado - Status: $($response.StatusCode)" -ForegroundColor Green
-    Write-Host "Respuesta: $($response.Content)" -ForegroundColor Cyan
-} catch {
-    Write-Host "❌ Error Khipu: $($_.Exception.Message)" -ForegroundColor Red
-    if ($_.Exception.Response) {
-        Write-Host "Status Code: $($_.Exception.Response.StatusCode.value__)" -ForegroundColor Yellow
-    }
-}
-
-# Debugging completo de base de datos
-try {
-    $response = Invoke-WebRequest -Uri "http://localhost:3001/api/dashboard/test-db" -UseBasicParsing
-    Write-Host "✅ Base de datos conectada - Status: $($response.StatusCode)" -ForegroundColor Green
-} catch {
-    Write-Host "❌ Error BD: $($_.Exception.Message)" -ForegroundColor Red
-}
-```
-
-#### **Usa Invoke-RestMethod cuando necesites:**
-- ✅ Consultas rápidas de datos
-- ✅ Trabajar con objetos PowerShell directamente
-- ✅ Procesar datos JSON automáticamente
-- ✅ Hacer consultas simples a tu API
-
-**Ejemplo de consultas rápidas para datos:**
-```powershell
-# Obtener estadísticas rápidas del sistema
-$stats = Invoke-RestMethod -Uri "http://localhost:3001/api/dashboard/stats"
-Write-Host "📊 Estadísticas del Centro de Eventos:" -ForegroundColor Magenta
-Write-Host "- Total reservas: $($stats.totalReservas)" -ForegroundColor White
-Write-Host "- Clientes activos: $($stats.clientesActivos)" -ForegroundColor White
-Write-Host "- Ingresos del mes: $($stats.ingresosMes)" -ForegroundColor White
-
-# Ver resumen completo del sistema
-$clientes = Invoke-RestMethod -Uri "http://localhost:3001/api/clientes"
-$espacios = Invoke-RestMethod -Uri "http://localhost:3001/api/espacios"
-$reservas = Invoke-RestMethod -Uri "http://localhost:3001/api/reservas"
-
-Write-Host "`n🏡 Resumen del Centro de Eventos Cañete:" -ForegroundColor Yellow
-Write-Host "- 👥 Clientes registrados: $($clientes.Count)" -ForegroundColor Green
-Write-Host "- 🏢 Espacios disponibles: $($espacios.Count)" -ForegroundColor Green
-Write-Host "- 📅 Reservas totales: $($reservas.Count)" -ForegroundColor Green
-
-# Ver próximas reservas
-$proximasReservas = $reservas | Where-Object { [DateTime]$_.fecha_reserva -gt (Get-Date) } | Sort-Object fecha_reserva | Select-Object -First 3
-Write-Host "`n📅 Próximas 3 reservas:"
-$proximasReservas | ForEach-Object { 
-    Write-Host "- $($_.razon) - $($_.fecha_reserva) - $($_.cantidad_personas) personas" -ForegroundColor Cyan
-}
-```
-
-### Pruebas de Conexión con la Base de Datos
-
 **Verificar conexión a MySQL:**
 ```powershell
 Invoke-RestMethod -Uri "http://localhost:3001/api/dashboard/test-db"
@@ -415,50 +348,6 @@ Invoke-RestMethod -Uri "http://localhost:3001/api/dashboard/test-db"
 **Obtener estadísticas del dashboard:**
 ```powershell
 Invoke-RestMethod -Uri "http://localhost:3001/api/dashboard/stats"
-```
-
-### Pruebas de Endpoints Principales
-
-**Listar todos los clientes:**
-```powershell
-Invoke-RestMethod -Uri "http://localhost:3001/api/clientes"
-```
-
-**Listar todos los espacios:**
-```powershell
-Invoke-RestMethod -Uri "http://localhost:3001/api/espacios"
-```
-
-**Listar todas las reservas:**
-```powershell
-Invoke-RestMethod -Uri "http://localhost:3001/api/reservas"
-```
-
-**Listar todos los servicios:**
-```powershell
-Invoke-RestMethod -Uri "http://localhost:3001/api/servicios"
-```
-
-**Obtener datos del clima:**
-```powershell
-# Verificar que la API del clima funciona correctamente
-$clima = Invoke-RestMethod -Uri "http://localhost:3001/api/clima"
-Write-Host "🌤️ Clima actual en Cañete:" -ForegroundColor Cyan
-Write-Host "   Temperatura: $($clima.temperatura)°C" -ForegroundColor White
-Write-Host "   Descripción: $($clima.descripcion)" -ForegroundColor White
-Write-Host "   Humedad: $($clima.humedad)%" -ForegroundColor White
-```
-
-### Comandos de Desarrollo y Mantenimiento
-
-**Verificar que el servidor esté corriendo:**
-```powershell
-Test-NetConnection -ComputerName localhost -Port 3001
-```
-
-**Verificar que el cliente esté corriendo:**
-```powershell
-Test-NetConnection -ComputerName localhost -Port 3000
 ```
 
 **Ver logs del servidor en tiempo real (si usas nodemon):**
@@ -545,143 +434,9 @@ Invoke-WebRequest -Uri "https://khipu.com" -UseBasicParsing
 Invoke-RestMethod -Uri "http://localhost:3001/api/clima"
 ```
 
-### 🚀 Comandos Adicionales para Proyecto Universitario
-
-**Script completo de verificación del sistema:**
-```powershell
-# Script de verificación completa del Centro de Eventos Cañete
-Write-Host "🏡 VERIFICACIÓN COMPLETA - Centro de Eventos Cañete" -ForegroundColor Yellow
-Write-Host "=" * 60 -ForegroundColor Yellow
-
-# 1. Verificar servidores
-Write-Host "`n1️⃣ Verificando servidores..." -ForegroundColor Cyan
-$servidor3001 = Test-NetConnection -ComputerName localhost -Port 3001 -WarningAction SilentlyContinue
-$cliente3000 = Test-NetConnection -ComputerName localhost -Port 3000 -WarningAction SilentlyContinue
-
-if ($servidor3001.TcpTestSucceeded) {
-    Write-Host "✅ Servidor Backend (3001) - FUNCIONANDO" -ForegroundColor Green
-} else {
-    Write-Host "❌ Servidor Backend (3001) - NO DISPONIBLE" -ForegroundColor Red
-}
-
-if ($cliente3000.TcpTestSucceeded) {
-    Write-Host "✅ Cliente Frontend (3000) - FUNCIONANDO" -ForegroundColor Green
-} else {
-    Write-Host "❌ Cliente Frontend (3000) - NO DISPONIBLE" -ForegroundColor Red
-}
-
-# 2. Verificar Base de Datos
-Write-Host "`n2️⃣ Verificando Base de Datos..." -ForegroundColor Cyan
-try {
-    $dbTest = Invoke-RestMethod -Uri "http://localhost:3001/api/dashboard/test-db" -ErrorAction Stop
-    Write-Host "✅ MySQL Database - CONECTADA" -ForegroundColor Green
-} catch {
-    Write-Host "❌ MySQL Database - ERROR DE CONEXIÓN" -ForegroundColor Red
-    Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-# 3. Verificar API Khipu
-Write-Host "`n3️⃣ Verificando API Khipu..." -ForegroundColor Cyan
-try {
-    $khipuTest = Invoke-RestMethod -Uri "http://localhost:3001/api/khipu/test-conexion" -ErrorAction Stop
-    Write-Host "✅ Khipu API - CONECTADA" -ForegroundColor Green
-} catch {
-    Write-Host "❌ Khipu API - ERROR DE CONEXIÓN" -ForegroundColor Red
-    Write-Host "   Error: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-# 4. Verificar API Clima
-Write-Host "`n4️⃣ Verificando API del Clima..." -ForegroundColor Cyan
-try {
-    $climaTest = Invoke-RestMethod -Uri "http://localhost:3001/api/clima" -ErrorAction Stop
-    Write-Host "✅ OpenWeatherMap API - FUNCIONANDO" -ForegroundColor Green
-    Write-Host "   Clima actual: $($climaTest.description)" -ForegroundColor Cyan
-} catch {
-    Write-Host "❌ OpenWeatherMap API - ERROR" -ForegroundColor Red
-}
-
-# 5. Obtener estadísticas del sistema
-Write-Host "`n5️⃣ Estadísticas del Sistema..." -ForegroundColor Cyan
-try {
-    $stats = Invoke-RestMethod -Uri "http://localhost:3001/api/dashboard/stats" -ErrorAction Stop
-    Write-Host "📊 ESTADÍSTICAS ACTUALES:" -ForegroundColor Magenta
-    Write-Host "   👥 Total Clientes: $($stats.totalClientes)" -ForegroundColor White
-    Write-Host "   🏢 Total Espacios: $($stats.totalEspacios)" -ForegroundColor White
-    Write-Host "   📅 Total Reservas: $($stats.totalReservas)" -ForegroundColor White
-    Write-Host "   💰 Total Ingresos: $($stats.totalIngresos)" -ForegroundColor White
-} catch {
-    Write-Host "❌ No se pudieron obtener estadísticas" -ForegroundColor Red
-}
-
-Write-Host "`n" + "=" * 60 -ForegroundColor Yellow
-Write-Host "🎓 VERIFICACIÓN COMPLETA FINALIZADA" -ForegroundColor Yellow
-```
-
-**Comandos para demostración en presentaciones:**
-```powershell
-# Demo rápida para presentación universitaria
-Write-Host "🎓 DEMO - Centro de Eventos Cañete" -ForegroundColor Yellow
-
-# Mostrar todos los espacios disponibles
-Write-Host "`n🏢 ESPACIOS DISPONIBLES:" -ForegroundColor Cyan
-$espacios = Invoke-RestMethod -Uri "http://localhost:3001/api/espacios"
-$espacios | Format-Table -Property nombre, capacidad, @{Name="Costo (CLP)"; Expression={"{0:C0}" -f $_.costo_base}}, descripcion -AutoSize
-
-# Mostrar reservas confirmadas
-Write-Host "`n📅 RESERVAS CONFIRMADAS:" -ForegroundColor Cyan
-$reservas = Invoke-RestMethod -Uri "http://localhost:3001/api/reservas"
-$reservasConfirmadas = $reservas | Where-Object { $_.estado -eq "confirmada" }
-$reservasConfirmadas | Format-Table -Property razon, fecha_reserva, cantidad_personas, estado -AutoSize
-
-# Mostrar servicios premium
-Write-Host "`n🌟 SERVICIOS PREMIUM:" -ForegroundColor Cyan
-$servicios = Invoke-RestMethod -Uri "http://localhost:3001/api/servicios"
-$servicios | Format-Table -Property nombre, categoria, @{Name="Costo (CLP)"; Expression={"{0:C0}" -f $_.costo}}, descripcion -AutoSize
-```
-
-**Comandos para crear datos de prueba rápidos:**
-```powershell
-# Crear cliente de prueba para demo
-$nuevoCliente = @{
-    nombre = "Cliente Demo Universidad"
-    rut = "99.999.999-9"
-    correo = "demo@universidad.cl"
-    telefono = "+56999999999"
-} | ConvertTo-Json
-
-try {
-    $clienteCreado = Invoke-RestMethod -Uri "http://localhost:3001/api/clientes" -Method POST -Body $nuevoCliente -ContentType "application/json"
-    Write-Host "✅ Cliente demo creado exitosamente" -ForegroundColor Green
-    Write-Host "   ID: $($clienteCreado.id)" -ForegroundColor Cyan
-} catch {
-    Write-Host "❌ Error creando cliente demo: $($_.Exception.Message)" -ForegroundColor Red
-}
-```
-
-**Script de limpieza post-presentación:**
-```powershell
-# Limpiar datos de prueba después de demo
-Write-Host "🧹 Limpiando datos de demo..." -ForegroundColor Yellow
-
-# Eliminar cliente demo si existe
-try {
-    $clientes = Invoke-RestMethod -Uri "http://localhost:3001/api/clientes"
-    $clienteDemo = $clientes | Where-Object { $_.correo -eq "demo@universidad.cl" }
-    
-    if ($clienteDemo) {
-        # Aquí iría el comando DELETE si tienes endpoint de eliminación
-        Write-Host "🗑️ Cliente demo encontrado (ID: $($clienteDemo.id)) - Listo para eliminar" -ForegroundColor Cyan
-    } else {
-        Write-Host "ℹ️ No se encontraron datos de demo para limpiar" -ForegroundColor Blue
-    }
-} catch {
-    Write-Host "❌ Error en limpieza: $($_.Exception.Message)" -ForegroundColor Red
-}
-```
-
 ## 🚀 Guía de Despliegue Rápido
 
-Para cuando descargues el proyecto desde GitHub:
+Para cuando descargues el proyecto:
 
 1. **Verificar requisitos:**
    ```bash
@@ -701,7 +456,7 @@ Para cuando descargues el proyecto desde GitHub:
 
 3. **Configurar variables de entorno:**
    ```bash
-   # Copiar archivo .env.example a .env (si existe)
+   # Copiar archivo .env.example a .env (si existe, si no sigue el paso a paso de más abajo para crear las tuyas)
    cp server/.env.example server/.env
    
    # Editar variables de entorno
