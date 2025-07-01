@@ -1,44 +1,54 @@
+import {
+    FiBarChart2,
+    FiUsers,
+    FiHome,
+    FiTarget,
+    FiCalendar,
+    FiDollarSign,
+    FiTrendingUp
+} from 'react-icons/fi';
+
 export const adminRoutes = [
     {
         id: 'dashboard',
         label: 'Dashboard',
-        icon: '📊',
+        icon: FiBarChart2,
         description: 'Vista general'
     },
     {
         id: 'clientes',
         label: 'Clientes',
-        icon: '👥',
+        icon: FiUsers,
         description: 'Gestión de clientes'
     },
     {
         id: 'espacios',
         label: 'Espacios',
-        icon: '🏢',
+        icon: FiHome,
         description: 'Gestión de espacios'
     },
     {
         id: 'servicios',
         label: 'Servicios',
-        icon: '🎯',
+        icon: FiTarget,
         description: 'Servicios adicionales'
     },
     {
         id: 'reservas',
         label: 'Reservas',
-        icon: '📅',
+        icon: FiCalendar,
         description: 'Gestión de reservas'
     },
     {
         id: 'pagos',
         label: 'Pagos',
-        icon: '💰',
+        icon: FiDollarSign,
         description: 'Control de pagos'
     },
     {
         id: 'reportes',
         label: 'Reportes',
-        icon: '📈',
+        icon: FiTrendingUp,
         description: 'Reportes y estadísticas'
     }
 ];

@@ -297,4 +297,47 @@ router.get('/clientes/:id', (req, res) => {
     });
 });
 
+// Endpoint para buscar cliente por RUT
+router.get('/api/clientes/buscar-por-rut/:rut', (req, res) => {
+    console.log('Endpoint GET /api/clientes/buscar-por-rut/:rut llamado');
+
+    const { rut } = req.params;
+
+    if (!rut) {
+        return res.status(400).json({ error: 'RUT es requerido' });
+    }
+
+    const query = `
+        SELECT 
+            id,
+            nombre,
+            rut,
+            correo,
+            telefono,
+            fecha_creacion
+        FROM cliente 
+        WHERE rut = ?
+    `;
+
+    connection.query(query, [rut], (err, results) => {
+        if (err) {
+            console.error('Error al buscar cliente por RUT:', err);
+            return res.status(500).json({ error: 'Error al buscar cliente' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                error: 'Cliente no encontrado',
+                encontrado: false
+            });
+        }
+
+        console.log('Cliente encontrado por RUT:', results[0]);
+        res.status(200).json({
+            encontrado: true,
+            cliente: results[0]
+        });
+    });
+});
+
 module.exports = router;

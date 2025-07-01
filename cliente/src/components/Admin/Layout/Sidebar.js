@@ -1,6 +1,8 @@
 import React from 'react';
 import { adminRoutes } from './routes';
 import './Sidebar.css';
+import logoAdmin from '../../../assets/images/logoadmin.jpg';
+import { FiUser, FiSettings, FiLogOut } from 'react-icons/fi';
 
 function Sidebar({ activeSection, setActiveSection }) {
     const menuItems = adminRoutes;
@@ -16,8 +18,11 @@ function Sidebar({ activeSection, setActiveSection }) {
         <div className="sidebar">
             <div className="sidebar-header">
                 <div className="logo-section">
-                    <span className="logo-icon">🏛️</span>
-                    <h2>Admin Panel</h2>
+                    <img
+                        src={logoAdmin}
+                        alt="Admin Logo"
+                        className="logo-image"
+                    />
                 </div>
             </div>
 
@@ -30,7 +35,9 @@ function Sidebar({ activeSection, setActiveSection }) {
                                 onClick={() => setActiveSection(item.id)}
                                 title={item.description}
                             >
-                                <span className="nav-icon">{item.icon}</span>
+                                <span className="nav-icon">
+                                    {React.createElement(item.icon)}
+                                </span>
                                 <div className="nav-text">
                                     <span className="nav-label">{item.label}</span>
                                     <small className="nav-description">{item.description}</small>
@@ -44,7 +51,9 @@ function Sidebar({ activeSection, setActiveSection }) {
 
             <div className="sidebar-footer">
                 <div className="user-info">
-                    <div className="user-avatar">👤</div>
+                    <div className="user-avatar">
+                        <FiUser />
+                    </div>
                     <div className="user-details">
                         <span className="user-name">
                             {localStorage.getItem('adminUser') || 'Admin'}
@@ -58,14 +67,14 @@ function Sidebar({ activeSection, setActiveSection }) {
                         className="settings-btn"
                         title="Configuración"
                     >
-                        ⚙️
+                        <FiSettings />
                     </button>
                     <button
                         className="logout-btn"
                         onClick={handleLogout}
                         title="Cerrar sesión"
                     >
-                        🚪
+                        <FiLogOut />
                     </button>
                 </div>
             </div>

@@ -20,6 +20,7 @@ function Front() {
     // Estados para la sección de reserva
     const [nombre, setNombre] = useState('');
     const [rut, setRut] = useState('');
+    const [rutValido, setRutValido] = useState(null); // null: no validado, true: válido, false: inválido
     const [correo, setCorreo] = useState('');
     const [contacto, setContacto] = useState('');
     const [fecha, setFecha] = useState('');
@@ -288,9 +289,68 @@ function Front() {
     };
 
     // Manejar cambios en el RUT
-    const handleRutChange = (e) => {
+    const handleRutChange = async (e) => {
         const valorFormateado = formatearRut(e.target.value);
         setRut(valorFormateado);
+
+        // Validar RUT en tiempo real solo si tiene suficientes caracteres
+        if (valorFormateado.length >= 11) { // Formato mínimo: 12.345.678-9 (11 caracteres)
+            const esValido = validarRut(valorFormateado);
+            setRutValido(esValido);
+
+            // Si el RUT es válido, buscar cliente en la base de datos
+            if (esValido) {
+                const clienteExistente = await buscarClientePorRut(valorFormateado);
+
+                if (clienteExistente) {
+                    // Cargar datos del cliente automáticamente
+                    setNombre(clienteExistente.nombre || '');
+                    setCorreo(clienteExistente.correo || '');
+
+                    // Formatear el teléfono si existe
+                    if (clienteExistente.telefono && clienteExistente.telefono.trim() !== '') {
+                        setContacto(clienteExistente.telefono);
+                    }
+
+                    // Mostrar mensaje de confirmación
+                    Swal.fire({
+                        title: '✅ Cliente encontrado',
+                        html: `
+                            <div style="text-align: left; font-size: 14px;">
+                                <div style="background: #e8f5e8; padding: 15px; border-radius: 10px; margin-bottom: 15px;">
+                                    <strong>👤 Nombre:</strong> ${clienteExistente.nombre}<br>
+                                    <strong>📧 Correo:</strong> ${clienteExistente.correo || 'No registrado'}<br>
+                                    <strong>📱 Contacto:</strong> ${clienteExistente.telefono || 'No registrado'}
+                                </div>
+                                <p style="color: #666; margin: 0;">
+                                    Los datos se han cargado automáticamente. Puedes modificarlos si es necesario.
+                                </p>
+                            </div>
+                        `,
+                        icon: 'success',
+                        confirmButtonText: 'Perfecto',
+                        confirmButtonColor: '#4CAF50',
+                        timer: 4000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    // Limpiar campos si no se encuentra el cliente
+                    // Pero solo si los campos no han sido modificados manualmente
+                    if (nombre === '' && correo === '' && contacto === '+569 ') {
+                        // Los campos están vacíos, es un nuevo cliente
+                        console.log('RUT válido pero cliente nuevo');
+                    }
+                }
+            }
+        } else if (valorFormateado.length === 0) {
+            setRutValido(null); // Resetear validación si el campo está vacío
+            // Limpiar campos cuando se borra el RUT
+            setNombre('');
+            setCorreo('');
+            setContacto('+569 ');
+        } else {
+            setRutValido(null); // No validar hasta que tenga suficientes caracteres
+        }
     };
 
     // Manejar cambios en el contacto
@@ -608,23 +668,65 @@ function Front() {
         return costoEspacio + costoServicios;
     };
 
-    // Función para validar RUT
+    // Función para validar RUT chileno con algoritmo completo
     const validarRut = (rut) => {
-        // Remover puntos y guión
-        const rutLimpio = rut.replace(/[.-]/g, '');
+        if (!rut || rut.trim() === '') {
+            return false;
+        }
+
+        // Remover puntos, guiones y espacios
+        const rutLimpio = rut.replace(/[.\-\s]/g, '').toUpperCase();
 
         // Debe tener entre 8 y 9 caracteres
         if (rutLimpio.length < 8 || rutLimpio.length > 9) {
             return false;
         }
 
-        // El último caracter puede ser número o K
-        const dv = rutLimpio.slice(-1).toUpperCase();
-        if (!/[0-9K]/.test(dv)) {
+        // Separar números y dígito verificador
+        const numeros = rutLimpio.slice(0, -1);
+        const digitoVerificadorIngresado = rutLimpio.slice(-1);
+
+        // Validar que los números sean solo dígitos
+        if (!/^\d+$/.test(numeros)) {
             return false;
         }
 
-        return true;
+        // Validar que el dígito verificador sea número o K
+        if (!/^[0-9K]$/.test(digitoVerificadorIngresado)) {
+            return false;
+        }
+
+        // Algoritmo de validación del RUT chileno
+        // Paso 1: Convertir números en array de enteros y cambiar orden (derecha a izquierda)
+        const numerosArray = numeros.split('').map(Number).reverse();
+
+        // Paso 2: Multiplicar por la serie 2,3,4,5,6,7 (repetir si es necesario)
+        let suma = 0;
+        const multiplicadores = [2, 3, 4, 5, 6, 7];
+
+        for (let i = 0; i < numerosArray.length; i++) {
+            const multiplicador = multiplicadores[i % multiplicadores.length];
+            suma += numerosArray[i] * multiplicador;
+        }
+
+        // Paso 3: Calcular el dígito verificador
+        // Fórmula: 11 - (suma % 11)
+        let digitoCalculado = 11 - (suma % 11);
+
+        // Casos especiales:
+        // Si el resultado es 11, el dígito verificador es 0
+        // Si el resultado es 10, el dígito verificador es K
+        let digitoVerificadorCalculado;
+        if (digitoCalculado === 11) {
+            digitoVerificadorCalculado = '0';
+        } else if (digitoCalculado === 10) {
+            digitoVerificadorCalculado = 'K';
+        } else {
+            digitoVerificadorCalculado = digitoCalculado.toString();
+        }
+
+        // Paso 4: Comparar el dígito verificador ingresado con el calculado
+        return digitoVerificadorIngresado === digitoVerificadorCalculado;
     };
 
     // Función para validar contacto
@@ -659,7 +761,7 @@ function Front() {
 
         // Validaciones antes de enviar
         if (!validarRut(rut)) {
-            setMensaje('El RUT ingresado no es válido. Debe tener entre 8 y 9 dígitos.');
+            setMensaje('El RUT ingresado no es válido. Por favor verifique que el número y dígito verificador sean correctos.');
             setStatus('error');
             return;
         }
@@ -808,6 +910,7 @@ function Front() {
     const limpiarFormulario = () => {
         setNombre('');
         setRut('');
+        setRutValido(null); // Resetear estado de validación del RUT
         setCorreo('');
         setContacto('+569 ');
         setFecha('');
@@ -861,6 +964,34 @@ function Front() {
 
         // Limpiar formulario
         limpiarFormulario();
+    };
+
+    // Función para buscar cliente por RUT
+    const buscarClientePorRut = async (rutIngresado) => {
+        if (!rutIngresado || rutIngresado.trim() === '') {
+            return null;
+        }
+
+        try {
+            console.log('Buscando cliente con RUT:', rutIngresado);
+            const response = await Axios.get(`http://localhost:3001/api/clientes/buscar-por-rut/${encodeURIComponent(rutIngresado)}`);
+
+            if (response.data.encontrado) {
+                console.log('Cliente encontrado:', response.data.cliente);
+                return response.data.cliente;
+            }
+
+            return null;
+        } catch (error) {
+            // Si el error es 404, significa que el cliente no existe (normal)
+            if (error.response && error.response.status === 404) {
+                console.log('Cliente no existe en la base de datos');
+                return null;
+            }
+
+            console.error('Error al buscar cliente por RUT:', error);
+            return null;
+        }
     };
 
     return (
@@ -954,9 +1085,29 @@ function Front() {
                             placeholder="12.345.678-9"
                             maxLength="12"
                             required
+                            style={{
+                                borderColor: rutValido === true ? '#4CAF50' :
+                                    rutValido === false ? '#f44336' : '#ddd',
+                                borderWidth: '2px'
+                            }}
                         />
-                        <small style={{ color: '#666', fontSize: '0.85em' }}>
-                            Formato: 12.345.678-9 (máximo 9 dígitos)
+                        <small style={{
+                            color: rutValido === true ? '#4CAF50' :
+                                rutValido === false ? '#f44336' : '#666',
+                            fontSize: '0.85em',
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginTop: '5px'
+                        }}>
+                            {rutValido === true && (
+                                <span>✅ RUT válido</span>
+                            )}
+                            {rutValido === false && (
+                                <span>❌ RUT inválido - verifique el número y dígito verificador</span>
+                            )}
+                            {rutValido === null && (
+                                <span>Formato: 12.345.678-9 (máximo 9 dígitos)</span>
+                            )}
                         </small>
                     </div>
 
