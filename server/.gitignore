@@ -118,3 +118,23 @@ uploads/temp/
 .vscode/settings.json
 .idea/workspace.xml
 local-config.json
+
+# ===== ARCHIVOS ESPECÍFICOS DEL CHATBOT =====
+# Archivos de configuración del chatbot
+chatbot-config.json
+bot-secrets.json
+
+# Archivos de configuración de correo específicos
+CONFIGURACION_GMAIL.md
+gmail-credentials.json
+nodemailer-config.json
+
+# Archivos de logs del chatbot que pueden contener datos de usuarios
+chatbot-logs/
+contact-logs/
+user-interactions.log
+
+# Archivos temporales de correos
+email-templates/temp/
+mail-queue/
+email-failures.log

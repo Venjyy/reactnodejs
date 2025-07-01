@@ -35,3 +35,24 @@ src/config/api-keys.js
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# ===== ARCHIVOS ESPECÍFICOS DEL CHATBOT (FRONTEND) =====
+# Configuración del chatbot
+src/components/Chatbot/config/local.js
+src/components/Chatbot/secrets/
+src/components/Chatbot/logs/
+
+# Archivos de sesiones y cache del chatbot
+src/cache/chatbot/
+src/temp/chatbot/
+chatbot-client-logs/
+user-interactions-cache/
+
+# Archivos de desarrollo del chatbot
+src/components/Chatbot/debug/
+*.chatbot.backup.js
+chatbot-test-data/
+
+# Archivos de widgets personalizados temporales
+src/components/Chatbot/widgets/temp/
+src/components/Chatbot/widgets/*.backup.js
