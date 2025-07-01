@@ -659,4 +659,143 @@ router.delete('/reservas/:id', (req, res) => {
     });
 });
 
+// Endpoint para buscar reservas por RUT del cliente (para el chatbot)
+router.get('/reservas/cliente/:rut', (req, res) => {
+    console.log('Endpoint GET /api/reservas/cliente/:rut llamado');
+    const { rut } = req.params;
+
+    if (!rut) {
+        return res.status(400).json({ error: 'RUT es requerido' });
+    }
+
+    const query = `
+        SELECT 
+            r.id,
+            r.fecha_reserva,
+            r.cantidad_personas as numero_personas,
+            r.razon as tipo_evento,
+            r.estado,
+            e.nombre as espacio_nombre,
+            c.nombre as cliente_nombre,
+            c.rut as cliente_rut
+        FROM reserva r
+        JOIN cliente c ON r.cliente_id = c.id
+        JOIN espacio e ON r.espacio_id = e.id
+        WHERE c.rut = ? 
+        AND r.estado IN ('pendiente', 'confirmada')
+        AND DATE(r.fecha_reserva) >= CURDATE()
+        ORDER BY r.fecha_reserva ASC
+    `;
+
+    connection.query(query, [rut], (err, results) => {
+        if (err) {
+            console.error('Error al buscar reservas por RUT:', err);
+            return res.status(500).json({ error: 'Error al buscar reservas' });
+        }
+
+        console.log(`Encontradas ${results.length} reservas para RUT: ${rut}`);
+        res.status(200).json(results);
+    });
+});
+
+// Endpoint específico para modificar fecha y hora de una reserva (para chatbot)
+router.put('/reservas/:id/fecha-hora', (req, res) => {
+    console.log('Endpoint PUT /api/reservas/:id/fecha-hora llamado');
+    const { id } = req.params;
+    const { fecha_reserva, hora_inicio } = req.body;
+
+    if (!fecha_reserva || !hora_inicio) {
+        return res.status(400).json({ 
+            error: 'Fecha de reserva y hora de inicio son requeridas' 
+        });
+    }
+
+    // Validar que la fecha no sea pasada
+    const fechaReserva = new Date(fecha_reserva);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    fechaReserva.setHours(0, 0, 0, 0);
+
+    if (fechaReserva <= hoy) {
+        return res.status(400).json({
+            error: 'Solo se pueden modificar reservas para fechas futuras'
+        });
+    }
+
+    // Verificar que la reserva existe y está activa
+    const queryVerificar = `
+        SELECT r.*, e.nombre as espacio_nombre 
+        FROM reserva r 
+        JOIN espacio e ON r.espacio_id = e.id
+        WHERE r.id = ? AND r.estado IN ('pendiente', 'confirmada', 'pagada')
+    `;
+
+    connection.query(queryVerificar, [id], (err, reservaExistente) => {
+        if (err) {
+            console.error('Error al verificar reserva:', err);
+            return res.status(500).json({ error: 'Error al verificar reserva' });
+        }
+
+        if (reservaExistente.length === 0) {
+            return res.status(404).json({ 
+                error: 'Reserva no encontrada o no se puede modificar' 
+            });
+        }
+
+        // Verificar disponibilidad en la nueva fecha y espacio
+        const queryDisponibilidad = `
+            SELECT id FROM reserva 
+            WHERE espacio_id = ? 
+            AND DATE(fecha_reserva) = ? 
+            AND estado != 'cancelada'
+            AND id != ?
+            LIMIT 1
+        `;
+
+        connection.query(queryDisponibilidad, [
+            reservaExistente[0].espacio_id, 
+            fecha_reserva, 
+            id
+        ], (err, conflicto) => {
+            if (err) {
+                console.error('Error al verificar disponibilidad:', err);
+                return res.status(500).json({ error: 'Error al verificar disponibilidad' });
+            }
+
+            if (conflicto.length > 0) {
+                return res.status(400).json({
+                    error: 'La fecha seleccionada ya está ocupada para este espacio'
+                });
+            }
+
+            // Actualizar la reserva
+            const fechaHoraCompleta = `${fecha_reserva} ${hora_inicio}:00`;
+            const queryActualizar = `
+                UPDATE reserva 
+                SET fecha_reserva = ?
+                WHERE id = ?
+            `;
+
+            connection.query(queryActualizar, [fechaHoraCompleta, id], (err, result) => {
+                if (err) {
+                    console.error('Error al actualizar reserva:', err);
+                    return res.status(500).json({ error: 'Error al actualizar reserva' });
+                }
+
+                if (result.affectedRows === 0) {
+                    return res.status(404).json({ error: 'No se pudo actualizar la reserva' });
+                }
+
+                console.log(`Reserva ${id} modificada - Nueva fecha: ${fechaHoraCompleta}`);
+                res.status(200).json({
+                    success: true,
+                    message: 'Reserva modificada exitosamente',
+                    nuevaFecha: fecha_reserva,
+                    nuevaHora: hora_inicio
+                });
+            });
+        });
+    });
+});
+
 module.exports = router;

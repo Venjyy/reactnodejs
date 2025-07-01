@@ -19,6 +19,7 @@ const reportesRoutes = require('./routes/reportes');
 const climaRoutes = require('./routes/clima');
 const khipuRoutes = require('./routes/khipu');
 const khipuWebhookRoutes = require('./routes/khipu-webhook');
+const contactoRoutes = require('./routes/contacto');
 
 const app = express();
 
@@ -117,6 +118,7 @@ app.use('/api', serviciosRoutes);
 app.use('/api', reservasRoutes);
 app.use('/api', pagosRoutes);
 app.use('/api', reportesRoutes);
+app.use('/api', contactoRoutes);
 app.use('/api/clima', climaRoutes);
 app.use('/api/khipu', khipuRoutes);
 app.use('/api/khipu', khipuWebhookRoutes);
@@ -124,6 +126,7 @@ app.use('/api/khipu', khipuWebhookRoutes);
 // Rutas directas para compatibilidad con frontend existente
 app.use('/', clientesRoutes);  // Para /clientes
 app.use('/', reservasRoutes);  // Para /crearReserva
+app.use('/', contactoRoutes);  // Para /contacto
 
 // Puerto del servidor
 const PORT = process.env.PORT || 3001;

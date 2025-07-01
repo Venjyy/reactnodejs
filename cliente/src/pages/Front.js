@@ -5,6 +5,7 @@ import 'react-calendar/dist/Calendar.css';
 import '../styles/Front.css'; // Asegúrate de tener este archivo CSS
 import Swal from 'sweetalert2';
 import PagoKhipu from '../components/PagoKhipu'; // Importar componente de pago
+import ChatBotComponent from '../components/Chatbot/ChatBot'; // Importar chatbot
 import bgImage from '../assets/images/bg.jpg';
 import fotorefImage from '../assets/images/fotoref.png';
 import saloninteriorImage from '../assets/images/saloninterior.jpg';
@@ -1627,6 +1628,9 @@ function Front() {
                     </div>
                 </div>
             )}
+
+            {/* Chatbot */}
+            <ChatBotComponent />
         </React.Fragment>
     );
 }

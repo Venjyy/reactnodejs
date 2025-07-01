@@ -12,6 +12,7 @@
 - **Axios**: ^1.10.0 - Cliente HTTP para comunicación con el servidor
 - **SweetAlert2**: ^11.22.1 - Alertas y notificaciones elegantes
 - **React Scripts**: 5.0.1 - Herramientas de desarrollo y build
+- **React Chatbot Kit**: ^2.2.2 - Framework para chatbots interactivos con React
 
 ### Testing (Frontend)
 - **@testing-library/react**: ^16.3.0 - Pruebas de componentes React
@@ -26,6 +27,7 @@
 - **CORS**: ^2.8.5 - Middleware para Cross-Origin Resource Sharing
 - **Dotenv**: ^17.0.0 - Carga de variables de entorno
 - **Axios**: ^1.10.0 - Cliente HTTP para APIs externas
+- **Nodemailer**: ^6.9.0 - Biblioteca para envío de correos electrónicos
 
 ### Generación de Reportes y PDFs
 - **jsPDF**: ^2.5.2 - Generación de documentos PDF
@@ -42,6 +44,19 @@
   - 🧪 **Actualmente en modo PRUEBA** (límite: $5,000 CLP)
   - 🚀 **Para producción**: Requiere upgrade de cuenta Khipu
 - **APIs Externas**: OpenWeatherMap para pronósticos del clima
+- **Correos Electrónicos**: Gmail SMTP para notificaciones automáticas
+
+### 🤖 Chatbot Inteligente (Nuevo)
+- **Framework**: React Chatbot Kit
+- **Funcionalidades**:
+  - 📝 **Modificar Reservas**: Buscar por RUT y modificar fecha/hora
+  - ❓ **FAQ Interactivo**: Preguntas frecuentes con respuestas desplegables
+  - 📞 **Contacto Directo**: Formulario integrado con notificaciones por email
+  - 🎨 **Interfaz Moderna**: Diseño responsive con colores de marca
+  - ✅ **Validaciones Inteligentes**: Formato automático de RUT y teléfono
+  - 🔄 **Auto-scroll**: Navegación fluida en conversaciones
+- **Posicionamiento**: Botón flotante en esquina inferior derecha
+- **Notificaciones**: Envío automático de correos al administrador (benjaf243@gmail.com)
 
 ### Base de Datos
 - **MySQL** (Pensando en migrar hacia MariaDB)
@@ -84,6 +99,12 @@ KHIPU_SECRET=key-khipu-nueva
 # 🔗 CONFIGURACIÓN DE URLs
 - FRONTEND_URL=http://localhost:3000
 - BACKEND_URL=http://localhost:3001
+
+# 📧 CONFIGURACIÓN DE CORREO (Gmail)
+# Para usar Gmail necesitas generar una "Contraseña de aplicación" en tu cuenta de Google
+# Ve a: Configuración de Google > Seguridad > Verificación en 2 pasos > Contraseñas de aplicaciones
+- EMAIL_USER=tu-email@gmail.com
+- EMAIL_PASS=tu-contraseña-de-aplicacion-de-16-caracteres
 
 # Iniciar servidor (desde la carpeta server)
 npm start / nodemon index.js
@@ -350,78 +371,6 @@ Invoke-RestMethod -Uri "http://localhost:3001/api/dashboard/test-db"
 Invoke-RestMethod -Uri "http://localhost:3001/api/dashboard/stats"
 ```
 
-**Ver logs del servidor en tiempo real (si usas nodemon):**
-```bash
-# En la carpeta server
-npm run dev
-```
-
-**Verificar variables de entorno (desde PowerShell):**
-```powershell
-# Verificar si existe el archivo .env
-Test-Path ".\server\.env"
-
-# Ver contenido del archivo .env (sin mostrar secrets)
-Get-Content ".\server\.env" | Where-Object { $_ -notmatch "SECRET|KEY" }
-```
-
-### Comandos de Backup y Restauración
-
-**Crear backup de la base de datos:**
-```bash
-mysqldump -u root -p centroevento > backup_centroevento_$(date +%Y%m%d_%H%M%S).sql
-```
-
-**Restaurar backup:**
-```bash
-mysql -u root -p centroevento < backup_centroevento_YYYYMMDD_HHMMSS.sql
-```
-
-### Comandos para Verificar Instalación
-
-**Verificar versiones instaladas:**
-```bash
-# Verificar Node.js
-node --version
-
-# Verificar npm
-npm --version
-
-# Verificar dependencias del servidor
-cd server && npm list --depth=0
-
-# Verificar dependencias del cliente
-cd cliente && npm list --depth=0
-```
-
-**Verificar puertos en uso:**
-```powershell
-# Ver qué está usando el puerto 3000 y 3001
-netstat -ano | findstr :3000
-netstat -ano | findstr :3001
-```
-
-### Comandos de Troubleshooting
-
-**Limpiar cache de npm:**
-```bash
-npm cache clean --force
-```
-
-**Reinstalar dependencias del servidor:**
-```bash
-cd server
-rm -rf node_modules package-lock.json
-npm install
-```
-
-**Reinstalar dependencias del cliente:**
-```bash
-cd cliente
-rm -rf node_modules package-lock.json
-npm install
-```
-
 **Verificar conexión a internet para APIs externas:**
 ```powershell
 # Probar conexión con OpenWeatherMap (usando API key de prueba)
@@ -495,10 +444,91 @@ Para cuando descargues el proyecto:
    ```
 
 
-## 📋 Funcionalidades
+## 🤖 Configuración del Chatbot
+
+### Funcionalidades del Asistente Virtual "Venjy"
+
+El chatbot integrado ofrece las siguientes funcionalidades:
+
+#### 1. 📝 **Modificar Reservas**
+- **Búsqueda por RUT**: Formato automático y validación
+- **Listado de reservas activas**: Solo reservas futuras y válidas
+- **Modificación de fecha/hora**: Interface intuitiva con calendario
+- **Validaciones**: Verificación de disponibilidad automática
+
+#### 2. ❓ **FAQ Interactivo**
+- **Preguntas frecuentes**: Horarios, servicios, políticas
+- **Interface desplegable**: Navegación fluida
+- **Contenido actualizado**: Información específica del negocio
+
+#### 3. 📞 **Contacto Directo**
+- **Formulario integrado**: Nombre, teléfono, correo, mensaje
+- **Validaciones avanzadas**: 
+  - Formato automático de teléfono chileno (+569 1234 5678)
+  - Validación de correo electrónico
+  - Campos obligatorios con SweetAlert2
+- **Notificaciones por email**: Envío automático al administrador
+- **Confirmación al usuario**: Mensaje de éxito con horarios de respuesta
+
+### Configuración Técnica
+
+#### Endpoints del Chatbot
+```javascript
+// Buscar reservas por RUT
+GET /api/reservas/cliente/:rut
+
+// Modificar fecha y hora de reserva
+PUT /api/reservas/:id/fecha-hora
+
+// Enviar mensaje de contacto
+POST /api/contacto-chatbot
+```
+
+#### Configuración de Correos
+**Consultar guía detallada**: Ver `server/CONFIGURACION_GMAIL.md` para instrucciones paso a paso
+
+#### Diseño y UX
+- **Posición**: Botón flotante en esquina inferior derecha
+- **Colores**: Paleta de marca (#8B4CF7, #4ECDC4, etc.)
+- **Responsive**: Adaptable a dispositivos móviles
+- **Auto-scroll**: Navegación automática a mensajes recientes
+- **Animaciones**: Transiciones suaves y loading states
+
+
+## �📋 Funcionalidades totales y esperadas del sistema.
 
 - **Gestión de clientes**: Registro y seguimiento de clientes por RUT
 - **Espacios personalizables**: Configuración de distintos espacios con capacidades y costos variables
 - **Reservas intuitivas**: Interfaz amigable para reservar fechas y horarios
 - **Validaciones automáticas**: Control de disponibilidad y capacidad
-- **Servicios adicionales**: Posibilidad de agregar servicios extra a las reservas (próximamente)
+- **Servicios adicionales**: Posibilidad de agregar servicios extra a las reservas
+- **🤖 Chatbot inteligente**: Asistente virtual "Venjy" con funciones avanzadas
+- **💰 Pagos online**: Integración con Khipu para transferencias bancarias
+- **📧 Notificaciones automáticas**: Sistema de correos para contacto directo
+- **📱 Responsive design**: Compatible con dispositivos móviles
+- **🎨 UI moderna**: Interfaz elegante con SweetAlert2
+
+### 🔍 Validaciones Avanzadas Implementadas
+
+#### RUT Chileno
+- **Formato automático**: 12.345.678-9
+- **Validación de dígito verificador**: Algoritmo módulo 11
+- **Feedback visual**: Colores y iconos indicativos
+- **Limpieza automática**: Eliminación de caracteres no válidos
+
+#### Teléfono Chileno  
+- **Formato automático**: +569 1234 5678
+- **Validación**: Solo números chilenos móviles (9 dígitos)
+- **Auto-completado**: Agrega +569 automáticamente
+- **Verificación**: Confirma 8 dígitos después del código
+
+#### Correo Electrónico
+- **Validación regex**: Formato estándar de email
+- **Dominios válidos**: Verificación de estructura
+- **Feedback inmediato**: Validación en tiempo real
+
+#### Fechas y Disponibilidad
+- **Verificación de disponibilidad**: Consulta automática al servidor
+- **Fechas futuras**: Solo permite fechas posteriores a hoy
+- **Horarios válidos**: Validación de rangos horarios del negocio
+- **Conflictos**: Prevención de reservas duplicadas
