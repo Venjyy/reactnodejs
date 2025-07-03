@@ -60,6 +60,7 @@
     opacity: 0;
     transform: translateY(20px) scale(0.95);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -233,11 +234,797 @@
     right: 20px;
     left: 20px;
   }
-  
+
   .chat-toggle-button {
     width: 56px;
     height: 56px;
     bottom: 16px;
     right: 16px;
+  }
+}
+
+/* 🤖 SISTEMA DE BIENVENIDA - Animaciones profesionales */
+.welcome-system {
+  position: absolute;
+  bottom: 80px;
+  right: 0;
+  z-index: 1001;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  flex-direction: row-reverse;
+  min-width: 300px;
+}
+
+/* 🤖 Robot Avatar Animado - DISEÑO MODERNO Y CUTE */
+.welcome-robot {
+  position: relative;
+  width: 90px;
+  height: 90px;
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateY(30px) scale(0.3);
+  transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.welcome-robot.robot-appear {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  animation: robotBounce 0.8s ease-out, robotFloat 3s ease-in-out infinite 1s;
+}
+
+.robot-body {
+  width: 70px;
+  height: 70px;
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  border: 3px solid #8B4CF7;
+  border-radius: 25px;
+  position: relative;
+  box-shadow:
+    0 12px 40px rgba(139, 76, 247, 0.2),
+    0 6px 20px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  margin: 0 auto;
+  overflow: visible;
+}
+
+/* Corazón pulsante en el pecho */
+.robot-body::before {
+  content: '💙';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 16px;
+  animation: heartBeat 1.5s ease-in-out infinite;
+}
+
+/* Bracitos cute */
+.robot-body::after {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: -8px;
+  width: 12px;
+  height: 25px;
+  background: linear-gradient(145deg, #8B4CF7, #6B46C1);
+  border-radius: 20px;
+  box-shadow:
+    0 4px 12px rgba(139, 76, 247, 0.3),
+    85px 0 0 0 linear-gradient(145deg, #8B4CF7, #6B46C1);
+  animation: robotWave 2s ease-in-out infinite alternate;
+}
+
+.robot-head {
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 45px;
+  background: linear-gradient(145deg, #ffffff, #f1f5f9);
+  border: 3px solid #8B4CF7;
+  border-radius: 25px 25px 20px 20px;
+  box-shadow:
+    0 8px 25px rgba(139, 76, 247, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  overflow: hidden;
+}
+
+/* Mejilla sonrojadas cute */
+.robot-head::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 5px;
+  width: 8px;
+  height: 6px;
+  background: #FF6B9D;
+  border-radius: 50%;
+  opacity: 0.6;
+  box-shadow: 32px 0 0 0 #FF6B9D;
+  animation: blushPulse 3s ease-in-out infinite;
+}
+
+.robot-eyes {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 10px 0;
+  gap: 8px;
+}
+
+.robot-eye {
+  width: 12px;
+  height: 12px;
+  background: #2D3748;
+  border-radius: 50%;
+  position: relative;
+  animation: robotBlink 4s ease-in-out infinite;
+  overflow: hidden;
+}
+
+/* Brillitos en los ojos */
+.robot-eye::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 4px;
+  height: 4px;
+  background: #ffffff;
+  border-radius: 50%;
+  animation: eyeSparkle 2s ease-in-out infinite;
+}
+
+/* Pupila que se mueve */
+.robot-eye::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 10px;
+  height: 10px;
+  background: radial-gradient(circle at 30% 30%, #4C1D95, #1E1B4B);
+  border-radius: 50%;
+  animation: robotEyeMove 5s ease-in-out infinite;
+}
+
+.robot-mouth {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px;
+  height: 10px;
+  border: 2px solid #8B4CF7;
+  border-top: none;
+  border-radius: 0 0 20px 20px;
+  background: linear-gradient(to bottom, transparent, #FF6B9D);
+  animation: robotSmile 3s ease-in-out infinite;
+}
+
+/* Antena más cute con estrella */
+.robot-antenna {
+  position: absolute;
+  top: -35px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 20px;
+  background: linear-gradient(to top, #8B4CF7, #A855F7);
+  border-radius: 2px;
+  animation: antennaWiggle 2s ease-in-out infinite;
+}
+
+.antenna-ball {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(45deg, #FFD93D, #FF8A65);
+  border-radius: 50%;
+  box-shadow:
+    0 0 15px rgba(255, 217, 61, 0.8),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  position: relative;
+  animation: antennaGlow 2s ease-in-out infinite alternate;
+}
+
+/* Estrellita en la antena */
+.antenna-ball::before {
+  content: '⭐';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  animation: starTwinkle 1.5s ease-in-out infinite;
+}
+
+/* 🎨 Efectos de partículas mágicas más bonitas */
+.robot-particles {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 110px;
+  height: 110px;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFloat 4s ease-in-out infinite;
+}
+
+.particle-1 {
+  top: 20%;
+  left: 10%;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #FFD93D, #FF8A65);
+  animation-delay: 0s;
+  box-shadow: 0 0 8px rgba(255, 217, 61, 0.6);
+}
+
+.particle-2 {
+  top: 30%;
+  right: 15%;
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, #4ECDC4, #38BDF8);
+  animation-delay: 0.8s;
+  box-shadow: 0 0 6px rgba(78, 205, 196, 0.6);
+}
+
+.particle-3 {
+  bottom: 25%;
+  left: 20%;
+  width: 5px;
+  height: 5px;
+  background: radial-gradient(circle, #FF6B9D, #EC4899);
+  animation-delay: 1.6s;
+  box-shadow: 0 0 7px rgba(255, 107, 157, 0.6);
+}
+
+.particle-4 {
+  bottom: 35%;
+  right: 10%;
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, #A855F7, #8B4CF7);
+  animation-delay: 2.4s;
+  box-shadow: 0 0 5px rgba(168, 85, 247, 0.6);
+}
+
+/* 💬 Mensajes de bienvenida */
+.welcome-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-self: flex-end;
+  margin-bottom: 10px;
+}
+
+.welcome-message {
+  position: relative;
+  opacity: 0;
+  transform: translateX(-30px) scale(0.8);
+  animation: messageSlideInLeft 0.6s ease-out forwards;
+}
+
+.message-1 {
+  animation-delay: 0.2s;
+}
+
+.message-2 {
+  animation-delay: 0.4s;
+}
+
+.message-bubble {
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  padding: 12px 16px;
+  border-radius: 20px 20px 20px 4px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    0 4px 16px rgba(139, 76, 247, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  position: relative;
+  border: 1px solid rgba(139, 76, 247, 0.1);
+  backdrop-filter: blur(10px);
+  min-width: 160px;
+  max-width: 280px;
+}
+
+.message-bubble::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent, rgba(139, 76, 247, 0.05), transparent);
+  border-radius: inherit;
+  opacity: 0;
+  animation: messageShimmer 2s ease-in-out infinite;
+}
+
+.message-text {
+  color: #2D3748;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Nunito', sans-serif;
+  position: relative;
+  z-index: 1;
+  display: block;
+  animation: textTypewriter 0.8s ease-out forwards;
+}
+
+.message-tail {
+  position: absolute;
+  bottom: -8px;
+  right: -8px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 8px solid #ffffff;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transform: rotate(45deg);
+}
+
+/* 🔔 Pulso de atención en el botón */
+.attention-pulse {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+  background: rgba(255, 217, 61, 0.3);
+  animation: attentionPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.chat-toggle-button.welcome-active {
+  animation: buttonExcitement 0.8s ease-in-out infinite alternate;
+}
+
+/* 🎭 ANIMACIONES KEYFRAMES */
+
+/* 🎭 ANIMACIONES KEYFRAMES - MEJORADAS PARA EL NUEVO ROBOT */
+
+@keyframes robotBounce {
+  0% {
+    transform: translateY(30px) scale(0.3);
+    opacity: 0;
+  }
+
+  50% {
+    transform: translateY(-15px) scale(1.1);
+    opacity: 0.8;
+  }
+
+  70% {
+    transform: translateY(5px) scale(0.95);
+    opacity: 0.9;
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes robotFloat {
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  33% {
+    transform: translateY(-6px) rotate(1deg);
+  }
+
+  66% {
+    transform: translateY(-3px) rotate(-0.5deg);
+  }
+}
+
+@keyframes robotBlink {
+
+  0%,
+  85%,
+  100% {
+    height: 12px;
+    background: #2D3748;
+  }
+
+  90%,
+  95% {
+    height: 2px;
+    background: #1A202C;
+  }
+}
+
+@keyframes robotEyeMove {
+
+  0%,
+  100% {
+    transform: translate(1px, 1px);
+  }
+
+  20% {
+    transform: translate(3px, 2px);
+  }
+
+  40% {
+    transform: translate(2px, 3px);
+  }
+
+  60% {
+    transform: translate(0px, 2px);
+  }
+
+  80% {
+    transform: translate(1px, 1px);
+  }
+}
+
+@keyframes eyeSparkle {
+
+  0%,
+  50%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  25%,
+  75% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes robotSmile {
+
+  0%,
+  100% {
+    width: 20px;
+    height: 10px;
+  }
+
+  50% {
+    width: 24px;
+    height: 12px;
+  }
+}
+
+@keyframes heartBeat {
+
+  0%,
+  50%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  25%,
+  75% {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+}
+
+@keyframes blushPulse {
+
+  0%,
+  50%,
+  100% {
+    opacity: 0.4;
+  }
+
+  25%,
+  75% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes robotWave {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(15deg);
+  }
+}
+
+@keyframes antennaWiggle {
+
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(0deg);
+  }
+
+  25% {
+    transform: translateX(-50%) rotate(3deg);
+  }
+
+  75% {
+    transform: translateX(-50%) rotate(-2deg);
+  }
+}
+
+@keyframes antennaGlow {
+  0% {
+    box-shadow:
+      0 0 15px rgba(255, 217, 61, 0.8),
+      inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    transform: translateX(-50%) scale(1);
+  }
+
+  100% {
+    box-shadow:
+      0 0 25px rgba(255, 217, 61, 1),
+      0 0 35px rgba(255, 138, 101, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    transform: translateX(-50%) scale(1.1);
+  }
+}
+
+@keyframes starTwinkle {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.2);
+  }
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0) rotate(0deg);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translateY(-15px) scale(1) rotate(90deg);
+  }
+
+  80% {
+    opacity: 1;
+    transform: translateY(-40px) scale(1.2) rotate(270deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0) rotate(360deg);
+  }
+}
+
+@keyframes messageSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(30px) scale(0.8);
+  }
+
+  60% {
+    opacity: 0.8;
+    transform: translateX(-5px) scale(1.05);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes messageSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.8);
+  }
+
+  60% {
+    opacity: 0.8;
+    transform: translateX(5px) scale(1.05);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes messageShimmer {
+
+  0%,
+  100% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes textTypewriter {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes attentionPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 0.3;
+  }
+
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes buttonExcitement {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+
+  100% {
+    transform: scale(1.05) rotate(2deg);
+  }
+}
+
+/* 📱 Responsive para sistema de bienvenida */
+@media (max-width: 480px) {
+  .welcome-system {
+    right: 10px;
+    bottom: 70px;
+    min-width: 250px;
+    gap: 15px;
+  }
+
+  .welcome-robot {
+    width: 80px;
+    height: 80px;
+  }
+
+  .robot-body {
+    width: 60px;
+    height: 60px;
+    border-radius: 20px;
+  }
+
+  .robot-body::before {
+    font-size: 14px;
+  }
+
+  .robot-body::after {
+    width: 10px;
+    height: 20px;
+    box-shadow:
+      0 4px 12px rgba(139, 76, 247, 0.3),
+      70px 0 0 0 linear-gradient(145deg, #8B4CF7, #6B46C1);
+  }
+
+  .robot-head {
+    width: 42px;
+    height: 38px;
+    top: -20px;
+    border-radius: 20px 20px 15px 15px;
+  }
+
+  .robot-head::before {
+    width: 6px;
+    height: 5px;
+    top: 16px;
+    left: 4px;
+    box-shadow: 28px 0 0 0 #FF6B9D;
+  }
+
+  .robot-eyes {
+    padding: 10px 8px 0;
+    gap: 6px;
+  }
+
+  .robot-eye {
+    width: 10px;
+    height: 10px;
+  }
+
+  .robot-eye::before {
+    width: 3px;
+    height: 3px;
+    top: 1px;
+    left: 2px;
+  }
+
+  .robot-eye::after {
+    width: 8px;
+    height: 8px;
+  }
+
+  .robot-mouth {
+    width: 16px;
+    height: 8px;
+    bottom: 8px;
+  }
+
+  .robot-antenna {
+    width: 2px;
+    height: 16px;
+    top: -28px;
+  }
+
+  .antenna-ball {
+    width: 10px;
+    height: 10px;
+    top: -6px;
+  }
+
+  .antenna-ball::before {
+    font-size: 6px;
+  }
+
+  .robot-particles {
+    width: 100px;
+    height: 100px;
+    top: -8px;
+    left: -8px;
+  }
+
+  .particle-1 {
+    width: 5px;
+    height: 5px;
+  }
+
+  .particle-2 {
+    width: 3px;
+    height: 3px;
+  }
+
+  .particle-3 {
+    width: 4px;
+    height: 4px;
+  }
+
+  .particle-4 {
+    width: 2px;
+    height: 2px;
+  }
+
+  .message-bubble {
+    padding: 10px 14px;
+    max-width: 180px;
+    font-size: 13px;
+  }
+
+  .attention-pulse {
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
   }
 }

@@ -58,6 +58,65 @@
 - **Posicionamiento**: Botón flotante en esquina inferior derecha
 - **Notificaciones**: Envío automático de correos al administrador (benjaf243@gmail.com)
 
+### Sistema de Procesamiento de Lenguaje Natural (NLP Básico)
+> **Clasificación**: Chatbot conversacional con NLP básico - Entre bots de respuestas fijas y IA generativa
+
+#### Capacidades Avanzadas del Chatbot "Venjy"
+- *** Detección de Intenciones Múltiples**: Reconoce saludos + consultas en un mismo mensaje
+- *** Extracción de Entidades**: Identifica automáticamente:
+  - **Fechas**: "15 de julio", "mañana", "próximo viernes"
+  - **Espacios**: Nombres de espacios mencionados en texto libre
+  - **Personas**: Número de asistentes esperados
+  - **Contexto combinado**: Procesa múltiples entidades simultáneamente
+
+#### Comprensión de Lenguaje Natural
+- **Frases complejas**: Entiende "Para fecha 15 de julio en ESPACIOTEST con 6 personas"
+- **Consultas naturales**: "¿Está disponible el campo para 20 personas el viernes?"
+- **Respuestas contextuales**: Combina información y proporciona sugerencias inteligentes
+- **Fallback inteligente**: Sugiere formatos cuando no entiende el mensaje
+
+#### Integración con Base de Datos Real
+- **Disponibilidad en tiempo real**: Consulta estado actual de espacios
+- **Validaciones automáticas**: Verifica capacidad, fechas futuras y conflictos
+- **Respuestas dinámicas**: No usa datos hardcodeados, todo viene de la BD
+- **Sugerencias personalizadas**: Propone alternativas según capacidad y disponibilidad
+
+#### Tecnologías NLP Implementadas
+- **Expresiones regulares avanzadas**: Para extracción de fechas y entidades
+- **Análisis sintáctico**: Procesamiento de texto libre
+- **Patrones de intención**: Detección de múltiples intenciones por mensaje
+- **Normalización de texto**: Manejo de variaciones en escritura
+
+#### Flujo Conversacional Inteligente
+- **Bienvenida animada**: Sistema de bienvenida con animaciones CSS
+- **Botones principales mejorados**: Diseño moderno y responsive
+- **Mensajes de ayuda**: Guía al usuario cuando no entiende
+- **Respuestas combinadas**: Maneja saludos + consultas específicas
+- **Validación de entradas**: Formatos automáticos y verificaciones
+
+### Mejoras Técnicas Implementadas especificas del ChatBOT (Julio 2025)
+#### Frontend (React)
+- **Rediseño visual completo** del chatbot con paleta de colores moderna
+- **Sistema de bienvenida animado** con efectos CSS y transiciones suaves
+- **Botones principales responsivos** que se adaptan a diferentes pantallas
+- **Corrección de conflictos CSS** entre formularios y calendario
+
+#### Backend (Node.js)
+- **Endpoints especializados** para consultas de disponibilidad desde chatbot
+- **Formateo automático de fechas** en respuestas del servidor
+- **Validaciones robustas** para entrada de datos del usuario
+- **Integración completa con base de datos** para respuestas verídicas
+
+#### Procesamiento de Mensajes
+- **MessageParser.js mejorado**: 
+  - Detección de múltiples intenciones por mensaje
+  - Extracción avanzada de entidades usando regex
+  - Análisis de frases complejas y naturales
+- **ActionProvider.js optimizado**:
+  - Respuestas combinadas (saludo + información)
+  - Sistema de ayuda contextual
+  - Fallback inteligente con ejemplos
+
 ### Base de Datos
 - **MySQL** (Pensando en migrar hacia MariaDB)
 - **Alojamiento**: DigitalOcean (o local)
@@ -447,14 +506,15 @@ Para cuando descargues el proyecto:
 ## 🤖 Configuración del Chatbot
 
 ### Funcionalidades del Asistente Virtual "Venjy"
+> **Clasificación**: Chatbot conversacional con NLP básico
 
-El chatbot integrado ofrece las siguientes funcionalidades:
+El chatbot integrado ofrece las siguientes funcionalidades avanzadas:
 
 #### 1. 📝 **Modificar Reservas**
-- **Búsqueda por RUT**: Formato automático y validación
+- **Búsqueda inteligente por RUT**: Formato automático y validación
 - **Listado de reservas activas**: Solo reservas futuras y válidas
 - **Modificación de fecha/hora**: Interface intuitiva con calendario
-- **Validaciones**: Verificación de disponibilidad automática
+- **Validaciones en tiempo real**: Verificación de disponibilidad automática contra BD
 
 #### 2. ❓ **FAQ Interactivo**
 - **Preguntas frecuentes**: Horarios, servicios, políticas
@@ -469,6 +529,13 @@ El chatbot integrado ofrece las siguientes funcionalidades:
   - Campos obligatorios con SweetAlert2
 - **Notificaciones por email**: Envío automático al administrador
 - **Confirmación al usuario**: Mensaje de éxito con horarios de respuesta
+
+#### 4. 🧠 **Consultas de Disponibilidad en Lenguaje Natural**
+- **Comprende frases complejas**: "Para el 15 de julio en el salón con 50 personas"
+- **Extrae entidades automáticamente**: Fecha, espacio, número de personas
+- **Respuestas con datos reales**: Consulta directa a la base de datos
+- **Sugerencias inteligentes**: Propone alternativas según capacidad y disponibilidad
+- **Manejo de múltiples intenciones**: Saludo + consulta en un mismo mensaje
 
 ### Configuración Técnica
 
@@ -495,7 +562,7 @@ POST /api/contacto-chatbot
 - **Animaciones**: Transiciones suaves y loading states
 
 
-## �📋 Funcionalidades totales y esperadas del sistema.
+## 📋 Funcionalidades totales y esperadas del sistema.
 
 - **Gestión de clientes**: Registro y seguimiento de clientes por RUT
 - **Espacios personalizables**: Configuración de distintos espacios con capacidades y costos variables

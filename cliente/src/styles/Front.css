@@ -497,32 +497,36 @@ nav a:hover {
     }
 }
 
-/* Botón hero con efectos avanzados */
-.btn-hero {
+/* Botón hero con efectos avanzados - ESPECÍFICO para sobrescribir .btn */
+.btn.btn-hero {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    padding: 20px 45px;
-    font-size: 20px;
+    gap: 8px;
+    padding: 10px 24px !important;
+    font-size: 1.1rem !important;
     font-weight: 700;
-    border-radius: 60px;
-    background: linear-gradient(135deg, var(--accent-yellow), var(--orange-accent), var(--pink-accent));
+    border-radius: 30px !important;
+    background: linear-gradient(135deg, var(--accent-yellow), var(--orange-accent), var(--pink-accent)) !important;
     background-size: 300% 300%;
     color: var(--text-dark);
     text-decoration: none;
     transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     box-shadow:
-        0 8px 32px rgba(255, 217, 61, 0.3),
-        0 4px 16px rgba(255, 138, 101, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        0 4px 12px rgba(255, 217, 61, 0.18),
+        0 2px 8px rgba(255, 138, 101, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
     animation:
         btnGlow 3s ease-in-out infinite,
-        btnFloat 4s ease-in-out infinite;
+        btnFloat 4s ease-in-out infinite !important;
     overflow: hidden;
+    min-width: unset !important;
+    width: auto !important;
+    height: auto !important;
+    white-space: nowrap;
 }
 
-.btn-hero::before {
+.btn.btn-hero::before {
     content: '';
     position: absolute;
     top: 0;
@@ -536,11 +540,11 @@ nav a:hover {
     transition: left 0.6s ease;
 }
 
-.btn-hero:hover::before {
+.btn.btn-hero:hover::before {
     left: 100%;
 }
 
-.btn-hero::after {
+.btn.btn-hero::after {
     content: '';
     position: absolute;
     top: 50%;
@@ -553,24 +557,24 @@ nav a:hover {
     border-radius: 50%;
 }
 
-.btn-hero:hover::after {
+.btn.btn-hero:hover::after {
     width: 300px;
     height: 300px;
 }
 
-.btn-hero:hover {
-    transform: translateY(-8px) scale(1.05);
+.btn.btn-hero:hover {
+    transform: translateY(-8px) scale(1.05) !important;
     background-position: 100% 100%;
     box-shadow:
         0 16px 48px rgba(255, 217, 61, 0.4),
         0 8px 32px rgba(255, 138, 101, 0.3),
         0 4px 16px rgba(255, 107, 157, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
     animation-play-state: paused;
 }
 
-.btn-hero:active {
-    transform: translateY(-4px) scale(1.02);
+.btn.btn-hero:active {
+    transform: translateY(-4px) scale(1.02) !important;
 }
 
 .btn-text {
@@ -992,11 +996,26 @@ section h2::after {
     min-height: 120px;
 }
 
-.form button {
-    width: 100%;
-    font-size: 20px;
-    padding: 20px;
+.form button:not(.react-calendar__navigation button):not(.react-calendar__tile):not(.btn-cerrar-calendario) {
+    width: auto;
+    font-size: 1.1rem;
+    padding: 12px 30px;
     margin-top: 30px;
+    min-width: 140px;
+    display: inline-block;
+    animation: breathe 3s ease-in-out infinite;
+}
+
+@keyframes breathe {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.02);
+    }
 }
 
 /* Servicios adicionales en el formulario */

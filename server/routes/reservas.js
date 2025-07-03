@@ -659,7 +659,7 @@ router.delete('/reservas/:id', (req, res) => {
     });
 });
 
-// Endpoint para buscar reservas por RUT del cliente (para el chatbot)
+// Endpoint para buscar reservas por RUT del cliente (para el chatbot, esto hay que moverlo a su propio archivo)
 router.get('/reservas/cliente/:rut', (req, res) => {
     console.log('Endpoint GET /api/reservas/cliente/:rut llamado');
     const { rut } = req.params;
@@ -705,8 +705,8 @@ router.put('/reservas/:id/fecha-hora', (req, res) => {
     const { fecha_reserva, hora_inicio } = req.body;
 
     if (!fecha_reserva || !hora_inicio) {
-        return res.status(400).json({ 
-            error: 'Fecha de reserva y hora de inicio son requeridas' 
+        return res.status(400).json({
+            error: 'Fecha de reserva y hora de inicio son requeridas'
         });
     }
 
@@ -737,8 +737,8 @@ router.put('/reservas/:id/fecha-hora', (req, res) => {
         }
 
         if (reservaExistente.length === 0) {
-            return res.status(404).json({ 
-                error: 'Reserva no encontrada o no se puede modificar' 
+            return res.status(404).json({
+                error: 'Reserva no encontrada o no se puede modificar'
             });
         }
 
@@ -753,8 +753,8 @@ router.put('/reservas/:id/fecha-hora', (req, res) => {
         `;
 
         connection.query(queryDisponibilidad, [
-            reservaExistente[0].espacio_id, 
-            fecha_reserva, 
+            reservaExistente[0].espacio_id,
+            fecha_reserva,
             id
         ], (err, conflicto) => {
             if (err) {
@@ -795,6 +795,328 @@ router.put('/reservas/:id/fecha-hora', (req, res) => {
                 });
             });
         });
+    });
+});
+
+// Endpoint para consultar disponibilidad desde chatbot (esto despues debe moverse a su archivo propio)
+router.get('/api/consultar-disponibilidad', (req, res) => {
+    console.log('Consulta de disponibilidad desde chatbot');
+    console.log('Query params:', req.query);
+
+    const { fecha, espacio, personas } = req.query;
+
+    // Verificar parámetros requeridos
+    if (!fecha) {
+        return res.status(400).json({
+            error: 'La fecha es requerida para consultar disponibilidad'
+        });
+    }
+
+    // Si no se especifica espacio, consultar disponibilidad general
+    let queryDisponibilidad;
+    let queryParams;
+
+    if (espacio) {
+        // Buscar espacio específico (por nombre)
+        const queryBuscarEspacio = `
+            SELECT id, nombre FROM espacio 
+            WHERE LOWER(nombre) LIKE LOWER(?) 
+            AND activo = 1
+            LIMIT 1
+        `;
+
+        connection.query(queryBuscarEspacio, [`%${espacio}%`], (err, espaciosEncontrados) => {
+            if (err) {
+                console.error('Error al buscar espacio:', err);
+                return res.status(500).json({ error: 'Error al buscar espacio' });
+            }
+
+            if (espaciosEncontrados.length === 0) {
+                return res.status(404).json({
+                    error: `No se encontró el espacio "${espacio}". Espacios disponibles: consulta nuestros espacios disponibles.`
+                });
+            }
+
+            const espacioEncontrado = espaciosEncontrados[0];
+
+            // Verificar disponibilidad para el espacio específico
+            const queryVerificarEspacio = `
+                SELECT r.id, e.nombre as espacio_nombre
+                FROM reserva r
+                JOIN espacio e ON r.espacio_id = e.id
+                WHERE r.espacio_id = ? 
+                AND DATE(r.fecha_reserva) = ? 
+                AND r.estado != 'cancelada'
+            `;
+
+            connection.query(queryVerificarEspacio, [espacioEncontrado.id, fecha], (err, reservasExistentes) => {
+                if (err) {
+                    console.error('Error al verificar disponibilidad:', err);
+                    return res.status(500).json({ error: 'Error al verificar disponibilidad' });
+                }
+
+                const disponible = reservasExistentes.length === 0;
+
+                res.json({
+                    disponible,
+                    fecha,
+                    espacio: espacioEncontrado.nombre,
+                    espacioId: espacioEncontrado.id,
+                    personas: personas || 'No especificado',
+                    mensaje: disponible
+                        ? `✅ ¡Excelente! El espacio "${espacioEncontrado.nombre}" está disponible para el ${fecha}.`
+                        : `❌ Lo siento, el espacio "${espacioEncontrado.nombre}" ya está ocupado para el ${fecha}.`
+                });
+            });
+        });
+    } else {
+        // Consultar disponibilidad general de todos los espacios
+        const queryDisponibilidadGeneral = `
+            SELECT e.id, e.nombre, e.descripcion,
+                   CASE 
+                       WHEN r.id IS NULL THEN 1 
+                       ELSE 0 
+                   END as disponible
+            FROM espacio e
+            LEFT JOIN (
+                SELECT espacio_id, id
+                FROM reserva 
+                WHERE DATE(fecha_reserva) = ? 
+                AND estado != 'cancelada'
+            ) r ON e.id = r.espacio_id
+            WHERE e.activo = 1
+            ORDER BY e.nombre
+        `;
+
+        connection.query(queryDisponibilidadGeneral, [fecha], (err, resultados) => {
+            if (err) {
+                console.error('Error al consultar disponibilidad general:', err);
+                return res.status(500).json({ error: 'Error al consultar disponibilidad' });
+            }
+
+            const espaciosDisponibles = resultados.filter(e => e.disponible === 1);
+            const espaciosOcupados = resultados.filter(e => e.disponible === 0);
+
+            res.json({
+                fecha,
+                personas: personas || 'No especificado',
+                espaciosDisponibles,
+                espaciosOcupados,
+                mensaje: espaciosDisponibles.length > 0
+                    ? `✅ Para el ${fecha} tenemos ${espaciosDisponibles.length} espacio(s) disponible(s).`
+                    : `❌ Lo siento, no hay espacios disponibles para el ${fecha}.`
+            });
+        });
+    }
+});
+
+// Endpoint específico para consultas de disponibilidad desde el chatbot
+router.post('/api/chatbot/consultar-disponibilidad', (req, res) => {
+    console.log('Consulta de disponibilidad desde chatbot:', req.body);
+
+    const { fecha, espacio, personas } = req.body;
+
+    // Construir respuesta
+    let respuesta = {
+        disponible: null,
+        mensaje: '',
+        espacios: [],
+        sugerencias: []
+    };
+
+    // Si no hay fecha específica, obtener todos los espacios
+    if (!fecha) {
+        const queryEspacios = `
+            SELECT id, nombre, capacidad, costo_base, descripcion 
+            FROM espacio 
+            WHERE disponible = 1 
+            ORDER BY capacidad ASC
+        `;
+
+        connection.query(queryEspacios, (err, espacios) => {
+            if (err) {
+                console.error('Error al obtener espacios:', err);
+                return res.status(500).json({ error: 'Error al obtener espacios' });
+            }
+
+            respuesta.espacios = espacios;
+            respuesta.mensaje = `Tenemos ${espacios.length} espacios disponibles. Para consultar disponibilidad específica, necesito que me indiques la fecha.`;
+
+            return res.json(respuesta);
+        });
+        return;
+    }
+
+    // Validar fecha
+    const fechaConsulta = new Date(fecha);
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    fechaConsulta.setHours(0, 0, 0, 0);
+
+    if (fechaConsulta <= hoy) {
+        respuesta.disponible = false;
+        respuesta.mensaje = 'Solo puedo consultar disponibilidad para fechas futuras (a partir de mañana).';
+        return res.json(respuesta);
+    }
+
+    // Si hay espacio específico, verificar su disponibilidad
+    if (espacio) {
+        // Buscar el espacio por nombre (flexible)
+        const queryBuscarEspacio = `
+            SELECT id, nombre, capacidad, costo_base, descripcion 
+            FROM espacio 
+            WHERE LOWER(nombre) LIKE LOWER(?) 
+            AND disponible = 1 
+            LIMIT 1
+        `;
+
+        connection.query(queryBuscarEspacio, [`%${espacio}%`], (err, espacioEncontrado) => {
+            if (err) {
+                console.error('Error al buscar espacio:', err);
+                return res.status(500).json({ error: 'Error al buscar espacio' });
+            }
+
+            if (espacioEncontrado.length === 0) {
+                // El espacio no existe, listar espacios disponibles
+                const queryEspacios = `
+                    SELECT id, nombre, capacidad, costo_base, descripcion 
+                    FROM espacio 
+                    WHERE disponible = 1 
+                    ORDER BY capacidad ASC
+                `;
+
+                connection.query(queryEspacios, (err, espacios) => {
+                    if (err) {
+                        console.error('Error al obtener espacios:', err);
+                        return res.status(500).json({ error: 'Error al obtener espacios' });
+                    }
+
+                    respuesta.disponible = false;
+                    respuesta.mensaje = `No encontré un espacio llamado "${espacio}". Estos son nuestros espacios disponibles:`;
+                    respuesta.espacios = espacios;
+
+                    return res.json(respuesta);
+                });
+                return;
+            }
+
+            const espacioInfo = espacioEncontrado[0];
+
+            // Verificar si hay capacidad suficiente
+            if (personas && personas > espacioInfo.capacidad) {
+                respuesta.disponible = false;
+                respuesta.mensaje = `El ${espacioInfo.nombre} tiene capacidad para ${espacioInfo.capacidad} personas, pero solicitas para ${personas} personas.`;
+
+                // Sugerir espacios con mayor capacidad
+                const querySugerencias = `
+                    SELECT id, nombre, capacidad, costo_base 
+                    FROM espacio 
+                    WHERE capacidad >= ? 
+                    AND disponible = 1 
+                    ORDER BY capacidad ASC
+                `;
+
+                connection.query(querySugerencias, [personas], (err, sugerencias) => {
+                    if (err) {
+                        console.error('Error al obtener sugerencias:', err);
+                        return res.json(respuesta);
+                    }
+
+                    if (sugerencias.length > 0) {
+                        respuesta.mensaje += ` Te sugiero estos espacios con mayor capacidad:`;
+                        respuesta.sugerencias = sugerencias;
+                    } else {
+                        respuesta.mensaje += ` Lamentablemente ninguno de nuestros espacios tiene capacidad para ${personas} personas.`;
+                    }
+
+                    return res.json(respuesta);
+                });
+                return;
+            }
+
+            // Verificar disponibilidad para la fecha específica
+            const queryDisponibilidad = `
+                SELECT id FROM reserva 
+                WHERE espacio_id = ? 
+                AND DATE(fecha_reserva) = ? 
+                AND estado != 'cancelada'
+                LIMIT 1
+            `;
+
+            connection.query(queryDisponibilidad, [espacioInfo.id, fecha], (err, reservaExistente) => {
+                if (err) {
+                    console.error('Error al verificar disponibilidad:', err);
+                    return res.status(500).json({ error: 'Error al verificar disponibilidad' });
+                }
+
+                if (reservaExistente.length > 0) {
+                    respuesta.disponible = false;
+                    respuesta.mensaje = `❌ El ${espacioInfo.nombre} NO está disponible para el ${fecha}.`;
+                } else {
+                    respuesta.disponible = true;
+                    respuesta.mensaje = `✅ ¡Excelente! El ${espacioInfo.nombre} SÍ está disponible para el ${fecha}.`;
+
+                    if (personas) {
+                        respuesta.mensaje += `\n\n📊 Capacidad: ${espacioInfo.capacidad} personas (solicitas: ${personas})`;
+                    }
+                    respuesta.mensaje += `\n💰 Costo base: $${espacioInfo.costo_base.toLocaleString('es-CL')}`;
+                    respuesta.mensaje += `\n📝 ${espacioInfo.descripcion}`;
+                    respuesta.mensaje += `\n\n¿Te gustaría hacer la reserva?`;
+                }
+
+                respuesta.espacios = [espacioInfo];
+                return res.json(respuesta);
+            });
+        });
+        return;
+    }
+
+    // Si solo hay fecha pero no espacio específico, mostrar todos los espacios disponibles para esa fecha
+    const queryDisponibilidadGeneral = `
+        SELECT e.id, e.nombre, e.capacidad, e.costo_base, e.descripcion,
+               CASE 
+                   WHEN r.id IS NULL THEN 1 
+                   ELSE 0 
+               END as disponible_fecha
+        FROM espacio e
+        LEFT JOIN reserva r ON e.id = r.espacio_id 
+            AND DATE(r.fecha_reserva) = ? 
+            AND r.estado != 'cancelada'
+        WHERE e.disponible = 1
+        ORDER BY e.capacidad ASC
+    `;
+
+    connection.query(queryDisponibilidadGeneral, [fecha], (err, espacios) => {
+        if (err) {
+            console.error('Error al consultar disponibilidad general:', err);
+            return res.status(500).json({ error: 'Error al consultar disponibilidad' });
+        }
+
+        const espaciosDisponibles = espacios.filter(e => e.disponible_fecha === 1);
+        const espaciosOcupados = espacios.filter(e => e.disponible_fecha === 0);
+
+        if (espaciosDisponibles.length === 0) {
+            respuesta.disponible = false;
+            respuesta.mensaje = `❌ Lo siento, no hay espacios disponibles para el ${fecha}.`;
+        } else {
+            respuesta.disponible = true;
+            respuesta.mensaje = `📅 Para el ${fecha} tenemos ${espaciosDisponibles.length} espacios disponibles:`;
+
+            if (personas) {
+                const espaciosConCapacidad = espaciosDisponibles.filter(e => e.capacidad >= personas);
+                if (espaciosConCapacidad.length > 0) {
+                    respuesta.mensaje += `\n\n✅ Espacios con capacidad para ${personas} personas:`;
+                    respuesta.espacios = espaciosConCapacidad;
+                } else {
+                    respuesta.mensaje += `\n\n⚠️ Ningún espacio disponible tiene capacidad para ${personas} personas.`;
+                    respuesta.espacios = espaciosDisponibles;
+                }
+            } else {
+                respuesta.espacios = espaciosDisponibles;
+            }
+        }
+
+        return res.json(respuesta);
     });
 });
 
